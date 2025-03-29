@@ -387,6 +387,7 @@ def get_all_students():
 
 
 # Flask Routes
+
 @app.route('/')
 def index():
     """Render the main dashboard."""

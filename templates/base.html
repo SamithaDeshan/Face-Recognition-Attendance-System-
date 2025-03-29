@@ -145,7 +145,7 @@
         display: block;
         margin-bottom: 5px;
     }
-    .form-group input {
+    .form-group input, .form-group select {
         width: 100%;
         padding: 8px;
         border: 1px solid #ddd;
@@ -282,6 +282,7 @@
                     <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Home</a></li>
                     <li><a href="{{ url_for('view_attendance') }}" class="{% if request.endpoint == 'view_attendance' %}active{% endif %}">View All Attendance</a></li>
                     <li><a href="{{ url_for('registered_students') }}" class="{% if request.endpoint == 'registered_students' %}active{% endif %}">View Registered Students</a></li>
+                    <li><a href="{{ url_for('check_attendance') }}" class="{% if request.endpoint == 'check_attendance' %}active{% endif %}">Check Attendance</a></li>
                 </ul>
             </nav>
         </div>
