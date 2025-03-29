@@ -6,175 +6,330 @@
     <title>FaceLog - Attendance System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 20px;
-        }
-        .header {
-            font-size: 36px;
-            color: #1e90ff;
-            font-weight: bold;
-            margin-bottom: 20px;
-        }
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 20px;
+        padding-top: 80px;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    /* Header and Navbar Styles */
+    header {
+        background-color: #1e90ff;
+        padding: 15px 20px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 1000;
+    }
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1500px;
+        margin: 0 auto;
+    }
+    .logo {
+        font-size: 28px;
+        font-weight: bold;
+        color: #fff;
+    }
+    .navbar ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        gap: 20px;
+    }
+    .navbar ul li {
+        display: inline;
+    }
+    .navbar ul li a {
+        color: #fff;
+        text-decoration: none;
+        font-size: 16px;
+        padding: 8px 15px;
+        border-radius: 5px;
+        transition: background-color 0.3s;
+    }
+    .navbar ul li a:hover {
+        background-color: #1c86ee;
+    }
+    .navbar ul li a.active {
+        background-color: #fff;
+        color: #1e90ff;
+        font-weight: bold;
+    }
+    /* Fixed Container for Sections */
+    .fixed-container {
+        position: fixed;
+        top: 80px;
+        left: 20px;
+        right: 20px;
+        bottom: 60px; /* Increased from 40px to 60px to account for footer height */
+        overflow: hidden;
+    }
+    .container {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        max-width: 1500px;
+        min-width: 1000px;
+        margin: 0 auto;
+        height: 100%;
+    }
+    .section {
+        background-color: #fff;
+        border-radius: 10px;
+        padding: 20px;
+        width: 48%;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        min-height: 600px;
+    }
+    .section h2 {
+        background-color: #1e90ff;
+        color: #fff;
+        padding: 10px;
+        border-radius: 5px;
+        margin: -20px -20px 20px -20px;
+        text-align: center;
+    }
+    .button {
+        background-color: #1e90ff;
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+    .button:hover {
+        background-color: #1c86ee;
+    }
+    /* Attendance Section */
+    .attendance-section {
+        display: flex;
+        flex-direction: column;
+    }
+    .table-wrapper {
+        flex: 1;
+        overflow-y: auto;
+        max-height: 500px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        padding: 10px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    th {
+        background-color: #f5f5f5;
+    }
+    table tr:hover {
+        background-color: #f9f9f9;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+    .total-users {
+        margin-top: 20px;
+        font-weight: bold;
+    }
+    /* Popup styles */
+    .popup {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+    }
+    .popup video {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }
+    .popup-buttons {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .popup-buttons .button {
+        flex: 1;
+    }
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+    /* Message styles */
+    .message {
+        display: none;
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 5px;
+        z-index: 1001;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    .message.show {
+        opacity: 1;
+    }
+    .message.error {
+        background-color: #f44336;
+        border: 2px solid #d32f2f;
+        font-size: 16px;
+    }
+    /* Footer Styles */
+    footer {
+        background-color: #1e90ff;
+        color: #fff;
+        padding: 8px 20px;
+        text-align: center;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        z-index: 999;
+    }
+    .footer-container {
+        max-width: 1500px;
+        margin: 0 auto;
+    }
+    .footer-container p {
+        margin: 2px 0;
+        font-size: 14px;
+    }
+    .footer-container a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .footer-container a:hover {
+        text-decoration: underline;
+    }
+    /* Responsive Design */
+    @media (max-width: 1050px) {
         .container {
+            min-width: 0;
+            overflow-x: auto;
             display: flex;
-            justify-content: space-between;
-            gap: 20px;
         }
         .section {
-            background-color: #fff;
-            border-radius: 10px;
-            padding: 20px;
-            width: 48%;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-width: 400px;
         }
-        .section h2 {
-            background-color: #1e90ff;
-            color: #fff;
-            padding: 10px;
-            border-radius: 5px;
-            margin: -20px -20px 20px -20px;
-            text-align: center;
-        }
-        .button {
-            background-color: #1e90ff;
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-        .button:hover {
-            background-color: #1c86ee;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        th, td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        th {
-            background-color: #f5f5f5;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .total-users {
-            margin-top: 20px;
-            font-weight: bold;
-        }
-        .nav-links {
-            margin-top: 20px;
-        }
-        .nav-links a {
-            margin-right: 10px;
-            color: #1e90ff;
-            text-decoration: none;
-        }
-        /* Popup styles */
-        .popup {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-        }
-        .popup video {
-            width: 100%;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        .popup-buttons {
-            display: flex;
-            justify-content: space-between;
-        }
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-        }
+    }
+    /* Sticky Table Headers */
+    .table-wrapper thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f5f5f5;
+        z-index: 1;
+    }
     </style>
 </head>
 <body>
-    <div class="header">FaceLog</div>
-    <div class="container">
-        <!-- Today's Attendance Section -->
-        <div class="section">
-            <h2>Today's Attendance</h2>
-            <button class="button" onclick="openAttendancePopup()">Take Attendance</button>
-            <table id="attendanceTable">
-                <thead>
-                    <tr>
-                        <th>S No</th>
-                        <th>Name</th>
-                        <th>ID</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceBody">
-                    {% for record in attendance %}
-                    <tr>
-                        <td>{{ record.s_no }}</td>
-                        <td>{{ record.name }}</td>
-                        <td>{{ record.id }}</td>
-                        <td>{{ record.time }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4">No attendance records for today.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div class="nav-links">
-                <a href="{{ url_for('view_attendance') }}">View All Attendance</a>
-                <a href="{{ url_for('registered_students') }}">View Registered Students</a>
-            </div>
+    <!-- Header with Navigation Bar -->
+    <header>
+        <div class="header-container">
+            <div class="logo">FaceLog</div>
+            <nav class="navbar">
+                <ul>
+                    <li><a href="{{ url_for('index') }}" class="active">Home</a></li>
+                    <li><a href="{{ url_for('view_attendance') }}">View All Attendance</a></li>
+                    <li><a href="{{ url_for('registered_students') }}">View Registered Students</a></li>
+                </ul>
+            </nav>
         </div>
+    </header>
 
-        <!-- Add New User Section -->
-        <div class="section">
-            <h2>Add New User</h2>
-            <form id="addStudentForm" action="{{ url_for('add_student') }}" method="post">
-                <div class="form-group">
-                    <label for="name">Enter New User Name*</label>
-                    <input type="text" id="name" name="name" required>
+    <div class="message" id="messageBox"></div>
+    <div class="fixed-container">
+        <div class="container">
+            <!-- Today's Attendance Section -->
+            <div class="section attendance-section">
+                <h2>Today's Attendance ({{ current_date }})</h2>
+                <button class="button" onclick="openAttendancePopup()">Take Attendance</button>
+                <div class="table-wrapper">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>S No</th>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceBody">
+                            {% for record in attendance %}
+                            <tr>
+                                <td>{{ record.s_no }}</td>
+                                <td>{{ record.name }}</td>
+                                <td>{{ record.id }}</td>
+                                <td>{{ record.time }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4">No attendance records for {{ current_date }}.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="form-group">
-                    <label for="id">Enter New User ID*</label>
-                    <input type="text" id="id" name="id" required>
-                </div>
-                <input type="hidden" id="image_data" name="image_data">
-                <button type="button" class="button" onclick="openAddStudentPopup()">Add New User</button>
-            </form>
-            <div class="total-users">Total Users in Database: {{ total_students }}</div>
+            </div>
+
+            <!-- Add New User Section -->
+            <div class="section">
+                <h2>Add New User</h2>
+                <form id="addStudentForm" action="{{ url_for('add_student') }}" method="post">
+                    <div class="form-group">
+                        <label for="name">Enter New User Name*</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="id">Enter New User ID*</label>
+                        <input type="text" id="id" name="id" required>
+                    </div>
+                    <input type="hidden" id="image_data" name="image_data">
+                    <button type="button" class="button" onclick="openAddStudentPopup()">Add New User</button>
+                </form>
+                <div class="total-users">Total Users in Database: {{ total_students }}</div>
+            </div>
         </div>
     </div>
 
@@ -202,9 +357,20 @@
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <p>© 2025 FaceLog. All rights reserved.</p>
+            <p><a href="#">Contact Us</a></p>
+        </div>
+    </footer>
+
     <script>
         // Initialize SocketIO
         const socket = io();
+
+        // Get the current date from the template
+        const currentDate = "{{ current_date }}";
 
         let attendanceStream = null;
         let addStudentStream = null;
@@ -296,11 +462,20 @@
                 body: new URLSearchParams({
                     'image_data': imageData
                 })
-            }).then(response => {
-                console.log("Attendance captured");
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Wait for the success message to be displayed, then redirect
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000); // Match the message display duration
+                }
                 closeAttendancePopup();
-            }).catch(err => {
+            })
+            .catch(err => {
                 console.error("Error capturing attendance:", err);
+                closeAttendancePopup();
             });
         }
 
@@ -314,10 +489,51 @@
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/jpeg');
 
-            // Set the image data in the form and submit
-            document.getElementById('image_data').value = imageData;
-            document.getElementById('addStudentForm').submit();
-            closeAddStudentPopup();
+            // Send the image to the server
+            fetch('/add-student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'name': document.getElementById('name').value,
+                    'id': document.getElementById('id').value,
+                    'image_data': imageData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Wait for the success message to be displayed, then redirect
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000); // Match the message display duration
+                }
+                closeAddStudentPopup();
+            })
+            .catch(err => {
+                console.error("Error adding student:", err);
+                closeAddStudentPopup();
+            });
+        }
+
+        // Show message to the user
+        function showMessage(message, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.classList.add('show');
+            if (isError) {
+                messageBox.classList.add('error');
+            } else {
+                messageBox.classList.remove('error');
+            }
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300); // Wait for fade-out animation to complete
+            }, 3000); // Hide after 3 seconds
         }
 
         // Listen for attendance updates
@@ -337,9 +553,19 @@
                 });
             } else {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="4">No attendance records for today.</td>';
+                row.innerHTML = `<td colspan="4">No attendance records for ${currentDate}.</td>`;
                 tbody.appendChild(row);
             }
+        });
+
+        // Listen for attendance messages
+        socket.on('attendance_message', function(data) {
+            showMessage(data.message, data.message.includes('already marked') || data.message.includes('not recognized') || data.message.includes('Invalid data'));
+        });
+
+        // Listen for student addition messages
+        socket.on('student_message', function(data) {
+            showMessage(data.message, data.message.includes('already registered') || data.message.includes('Invalid data'));
         });
 
         // Listen for total students updates
