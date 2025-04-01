@@ -1,12 +1,13 @@
-name,id,image_path
-Sammy,02,uploads\02_Sammy.jpg
-Sachin,03,uploads\03_Sachin.jpg
-Sandun,04,uploads\04_Sandun.jpg
-Kaweesha,05,uploads\05_Kaweesha.jpg
-Ashen,06,uploads\06_Ashen.jpg
-Udana ,07,uploads\07_Udana_.jpg
-Kaweesha duplicate,123,uploads\123_Kaweesha_duplicate.jpg
-Sammy 2,022,uploads\022_Sammy_2.jpg
-Maheepa,789,uploads\789_Maheepa.jpg
-Chandupa Avishka,852,uploads\852_Chandupa_Avishka.jpg
-Chenuka,457,uploads\457_Chenuka.jpg
+name,id,department,year,image_path
+Sammy,D/BCE/23/0002,Bsc Hons Computer Engineering,3rd Year,uploads\02_Sammy.jpg
+Sachin,D/BCS/24/0003,Bsc Hons Computer Science,2nd Year,uploads\03_Sachin.jpg
+Sandun,D/BSE/23/0004,Bsc Hons Software Engineering,3rd Year,uploads\04_Sandun.jpg
+Kaweesha,D/DBA/22/0005,Bsc Hons Data Science and Business Analytics,4th Year,uploads\05_Kaweesha.jpg
+Ashen,D/BIT/25/0006,Bsc Hons Information Technology,1st Year,uploads\06_Ashen.jpg
+Udana,D/BIS/24/0007,Bsc Hons Information Systems,2nd Year,uploads\07_Udana_.jpg
+"Kaweesha duplicate",D/DBA/23/0123,Bsc Hons Data Science and Business Analytics,3rd Year,uploads\123_Kaweesha_duplicate.jpg
+"Sammy 2",D/BCE/22/0022,Bsc Hons Computer Engineering,4th Year,uploads\022_Sammy_2.jpg
+Maheepa,D/BCS/25/0789,Bsc Hons Computer Science,1st Year,uploads\789_Maheepa.jpg
+"Chandupa Avishka",D/BSE/24/0852,Bsc Hons Software Engineering,2nd Year,uploads\852_Chandupa_Avishka.jpg
+Chenuka,D/BIT/23/0457,Bsc Hons Information Technology,3rd Year,uploads\457_Chenuka.jpg
+

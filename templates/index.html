@@ -8,58 +8,101 @@
 
 {% block content %}
     <div class="message" id="messageBox"></div>
-    <div class="fixed-container">
-        <div class="container">
-            <!-- Today's Attendance Section -->
-            <div class="section attendance-section">
-                <h2>Today's Attendance ({{ current_date }})</h2>
-                <button class="button" onclick="openAttendancePopup()">Take Attendance</button>
-                <div class="table-wrapper">
-                    <table id="attendanceTable">
-                        <thead>
-                            <tr>
-                                <th>S No</th>
-                                <th>Name</th>
-                                <th>ID</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="attendanceBody">
-                            {% for record in attendance %}
-                            <tr>
-                                <td>{{ record.s_no }}</td>
-                                <td>{{ record.name }}</td>
-                                <td>{{ record.id }}</td>
-                                <td>{{ record.time }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="4">No attendance records for {{ current_date }}.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
 
-            <!-- Add New User Section -->
-            <div class="section">
-                <h2>Add New User</h2>
-                <form id="addStudentForm" action="{{ url_for('add_student') }}" method="post">
-                    <div class="form-group">
-                        <label for="name">Enter New User Name*</label>
-                        <input type="text" id="name" name="name" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="id">Enter New User ID*</label>
-                        <input type="text" id="id" name="id" required>
-                    </div>
-                    <input type="hidden" id="image_data" name="image_data">
-                    <button type="button" class="button" onclick="openAddStudentPopup()">Add New User</button>
-                </form>
-                <div class="total-users">Total Users in Database: {{ total_students }}</div>
-            </div>
+    <!-- Summary Section -->
+    <div class="summary">
+        <div class="card">
+            <h3>{{ total_students }}</h3>
+            <p>Total Students</p>
         </div>
+        <div class="card">
+            <h3>{{ attendance | length }}</h3>
+            <p>Today's Attendance</p>
+        </div>
+        <div class="card">
+            <h3>{{ total_students - (attendance | length) }}</h3>
+            <p>Absentees</p>
+        </div>
+    </div>
+
+    <!-- Attendance Trends -->
+    <div class="card">
+        <h2>Attendance Trends</h2>
+        <div class="chart-container">
+            <canvas id="attendanceChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Today's Attendance -->
+    <div class="card">
+        <h2>Today's Attendance ({{ current_date }})</h2>
+        <button class="button" onclick="openAttendancePopup()">Take Attendance</button>
+        <div class="table-wrapper">
+            <table id="attendanceTable">
+                <thead>
+                    <tr>
+                        <th>S No</th>
+                        <th>Name</th>
+                        <th>ID</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="attendanceBody">
+                    {% for record in attendance %}
+                    <tr>
+                        <td>{{ record.s_no }}</td>
+                        <td>{{ record.name }}</td>
+                        <td>{{ record.id }}</td>
+                        <td>{{ record.time }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">No attendance records for {{ current_date }}.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add New User -->
+    <div class="card">
+        <h2>Add New User</h2>
+        <form id="addStudentForm" action="{{ url_for('add_student') }}" method="post">
+            <div class="form-group">
+                <label for="name">Enter New User Name*</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="department">Select Department*</label>
+                <select id="department" name="department" required onchange="updateIdPrefix()">
+                    <option value="" disabled selected>Select a department</option>
+                    <option value="Bsc Hons Computer Engineering">Bsc Hons Computer Engineering</option>
+                    <option value="Bsc Hons Computer Science">Bsc Hons Computer Science</option>
+                    <option value="Bsc Hons Software Engineering">Bsc Hons Software Engineering</option>
+                    <option value="Bsc Hons Data Science and Business Analytics">Bsc Hons Data Science and Business Analytics</option>
+                    <option value="Bsc Hons Information Technology">Bsc Hons Information Technology</option>
+                    <option value="Bsc Hons Information Systems">Bsc Hons Information Systems</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="year">Select Study Year*</label>
+                <select id="year" name="year" required onchange="updateIdPrefix()">
+                    <option value="" disabled selected>Select a year</option>
+                    <option value="1st Year">1st Year</option>
+                    <option value="2nd Year">2nd Year</option>
+                    <option value="3rd Year">3rd Year</option>
+                    <option value="4th Year">4th Year</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="student_number">Student ID (Enter 4-digit number)*</label>
+                <span id="id_prefix">D/</span><input type="text" id="student_number" name="student_number" maxlength="4" pattern="\d{4}" placeholder="e.g., 0002" required title="Enter a 4-digit student number">
+                <input type="hidden" id="id" name="id">
+            </div>
+            <input type="hidden" id="image_data" name="image_data">
+            <button type="button" class="button" onclick="openAddStudentPopup()">Add New User</button>
+        </form>
     </div>
 
     <!-- Popup for Attendance -->
@@ -97,6 +140,40 @@
 
         let attendanceStream = null;
         let addStudentStream = null;
+
+        // Degree to code mapping
+        const degreeToCode = {
+            "Bsc Hons Computer Engineering": "BCE",
+            "Bsc Hons Computer Science": "BCS",
+            "Bsc Hons Software Engineering": "BSE",
+            "Bsc Hons Data Science and Business Analytics": "DBA",
+            "Bsc Hons Information Technology": "BIT",
+            "Bsc Hons Information Systems": "BIS"
+        };
+
+        // Year to enroll year mapping
+        const yearToEnroll = {
+            "1st Year": "25",
+            "2nd Year": "24",
+            "3rd Year": "23",
+            "4th Year": "22"
+        };
+
+        // Function to update the ID prefix dynamically
+        function updateIdPrefix() {
+            const department = document.getElementById('department').value;
+            const year = document.getElementById('year').value;
+            const idPrefixSpan = document.getElementById('id_prefix');
+            let prefix = "D/";
+
+            if (department && year) {
+                const degreeCode = degreeToCode[department];
+                const enrollYear = yearToEnroll[year];
+                prefix = `D/${degreeCode}/${enrollYear}/`;
+            }
+
+            idPrefixSpan.textContent = prefix;
+        }
 
         // Open popup for taking attendance
         function openAttendancePopup() {
@@ -176,7 +253,6 @@
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/jpeg');
 
-            // Send the image to the server
             fetch('/take-attendance', {
                 method: 'POST',
                 headers: {
@@ -189,10 +265,9 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Wait for the success message to be displayed, then redirect
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 3000); // Match the message display duration
+                    }, 3000);
                 }
                 closeAttendancePopup();
             })
@@ -212,7 +287,14 @@
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/jpeg');
 
-            // Send the image to the server
+            const department = document.getElementById('department').value;
+            const year = document.getElementById('year').value;
+            const studentNumber = document.getElementById('student_number').value;
+            const degreeCode = degreeToCode[department];
+            const enrollYear = yearToEnroll[year];
+            const fullId = `D/${degreeCode}/${enrollYear}/${studentNumber}`;
+            document.getElementById('id').value = fullId;
+
             fetch('/add-student', {
                 method: 'POST',
                 headers: {
@@ -220,17 +302,18 @@
                 },
                 body: new URLSearchParams({
                     'name': document.getElementById('name').value,
-                    'id': document.getElementById('id').value,
+                    'id': fullId,
+                    'department': department,
+                    'year': year,
                     'image_data': imageData
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Wait for the success message to be displayed, then redirect
                     setTimeout(() => {
                         window.location.href = '/';
-                    }, 3000); // Match the message display duration
+                    }, 3000);
                 }
                 closeAddStudentPopup();
             })
@@ -255,14 +338,14 @@
                 messageBox.classList.remove('show');
                 setTimeout(() => {
                     messageBox.style.display = 'none';
-                }, 300); // Wait for fade-out animation to complete
-            }, 3000); // Hide after 3 seconds
+                }, 300);
+            }, 3000);
         }
 
         // Listen for attendance updates
         socket.on('attendance_update', function(data) {
             const tbody = document.getElementById('attendanceBody');
-            tbody.innerHTML = '';  // Clear the table
+            tbody.innerHTML = '';
             if (data.attendance.length > 0) {
                 data.attendance.forEach(record => {
                     const row = document.createElement('tr');
@@ -293,8 +376,58 @@
 
         // Listen for total students updates
         socket.on('total_students_update', function(data) {
-            const totalUsersDiv = document.querySelector('.total-users');
-            totalUsersDiv.textContent = `Total Users in Database: ${data.total_students}`;
+            const summaryCard = document.querySelector('.summary .card:first-child h3');
+            summaryCard.textContent = data.total_students;
+        });
+
+        // Chart.js for Attendance Trends (Mock Data)
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('attendanceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    datasets: [{
+                        label: 'Attendance Rate (%)',
+                        data: [85, 90, 88, 92, 87, 91, 93, 89, 94, 90, 92, 95],
+                        borderColor: '#FF4D4D',
+                        backgroundColor: 'rgba(255, 77, 77, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#E0E0E0'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#E0E0E0'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#E0E0E0'
+                            }
+                        }
+                    }
+                }
+            });
         });
     </script>
 {% endblock %}
