@@ -31,11 +31,7 @@
                     <i class="fas fa-user-plus"></i> Add New User
                 </a>
             </li>
-            <li>
-                <a href="{{ url_for('view_attendance') }}" class="{% if request.endpoint == 'view_attendance' %}active{% endif %}">
-                    <i class="fas fa-calendar-alt"></i> View Attendance
-                </a>
-            </li>
+
             <li>
                 <a href="{{ url_for('registered_students') }}" class="{% if request.endpoint == 'registered_students' %}active{% endif %}">
                     <i class="fas fa-users"></i> Registered Students

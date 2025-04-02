@@ -11,6 +11,7 @@ import base64
 from io import BytesIO
 from PIL import Image
 from calendar import monthrange
+from datetime import datetime, timedelta
 
 # Initialize Flask app and SocketIO
 app = Flask(__name__)
@@ -604,21 +605,35 @@ def registered_students():
     students = get_all_students()
     return render_template('registered_students.html', students=students)
 
-@app.route('/check-attendance', methods=['GET', 'POST'])
+@app.route('/check_attendance', methods=['GET', 'POST'])
 def check_attendance():
-    """Check attendance by day or by student."""
+    """Check attendance for a student within a specified time period."""
     students = get_all_students()
-    by_day_records = None
-    by_student_records = None
-    selected_date = None
+    student_attendance_records = None
     selected_student = None
+    overall_percentage = 0
+    attended_days = 0
+    total_weekdays = 0
+    weekday_percentages = [0, 0, 0, 0, 0]  # Monday to Friday
 
     if request.method == 'POST':
         action = request.form.get('action')
 
-        if action == 'by_day':
-            selected_date = request.form.get('date')
-            if selected_date:
+        if action == 'search_student':
+            student_id = request.form.get('student_id')
+            start_date_str = request.form.get('start_date')
+            end_date_str = request.form.get('end_date')
+
+            if student_id and start_date_str and end_date_str:
+                try:
+                    start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+                    end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+                    if start_date > end_date:
+                        start_date, end_date = end_date, start_date  # Swap if start_date is after end_date
+                except ValueError:
+                    return render_template('check_attendance.html', students=students)
+
+                # Get all attendance records
                 all_records = []
                 try:
                     with open(ATTENDANCE_CSV, 'r') as f:
@@ -626,12 +641,7 @@ def check_attendance():
                         expected_headers = {'name', 'id', 'time'}
                         if reader.fieldnames is None or not expected_headers.issubset(reader.fieldnames):
                             print(f"Error: {ATTENDANCE_CSV} has incorrect headers.")
-                            return render_template('check_attendance.html',
-                                                  students=students,
-                                                  by_day_records=by_day_records,
-                                                  by_student_records=by_student_records,
-                                                  selected_date=selected_date,
-                                                  selected_student=selected_student)
+                            return render_template('check_attendance.html', students=students)
 
                         for row in reader:
                             all_records.append(row)
@@ -640,52 +650,75 @@ def check_attendance():
                 except Exception as e:
                     print(f"Error reading {ATTENDANCE_CSV}: {e}")
 
-                by_day_records = []
+                # Filter records for the selected student within the date range
+                student_attendance_records = []
                 for record in all_records:
-                    record_date = record['time'].split(' ')[0]
-                    if record_date == selected_date:
-                        by_day_records.append(record)
+                    if record['id'] == student_id:
+                        try:
+                            record_date = datetime.strptime(record['time'], '%Y-%m-%d %H:%M:%S')
+                            if start_date <= record_date <= end_date:
+                                date_str, time_str = record['time'].split(' ')
+                                student_attendance_records.append({
+                                    'name': record['name'],
+                                    'id': record['id'],
+                                    'date': date_str,
+                                    'time': time_str
+                                })
+                        except ValueError:
+                            continue
 
-        elif action == 'by_student':
-            selected_student_id = request.form.get('student_id')
-            if selected_student_id:
-                all_records = []
-                try:
-                    with open(ATTENDANCE_CSV, 'r') as f:
-                        reader = csv.DictReader(f)
-                        expected_headers = {'name', 'id', 'time'}
-                        if reader.fieldnames is None or not expected_headers.issubset(reader.fieldnames):
-                            print(f"Error: {ATTENDANCE_CSV} has incorrect headers.")
-                            return render_template('check_attendance.html',
-                                                  students=students,
-                                                  by_day_records=by_day_records,
-                                                  by_student_records=by_student_records,
-                                                  selected_date=selected_date,
-                                                  selected_student=selected_student)
+                # Find the selected student
+                selected_student = next((s for s in students if s['id'] == student_id), None)
 
-                        for row in reader:
-                            all_records.append(row)
-                except FileNotFoundError:
-                    print(f"Error: {ATTENDANCE_CSV} not found.")
-                except Exception as e:
-                    print(f"Error reading {ATTENDANCE_CSV}: {e}")
+                # Calculate total weekdays in the period (Monday to Friday)
+                current_date = start_date
+                while current_date <= end_date:
+                    if current_date.weekday() <= 4:  # Monday to Friday
+                        total_weekdays += 1
+                    current_date += timedelta(days=1)
 
-                by_student_records = []
-                for record in all_records:
-                    if record['id'] == selected_student_id:
-                        record_date, record_time = record['time'].split(' ')
-                        record_with_date = record.copy()
-                        record_with_date['date'] = record_date
-                        record_with_date['time'] = record_time
-                        by_student_records.append(record_with_date)
-                selected_student = next((s for s in students if s['id'] == selected_student_id), None)
+                # Calculate attended days and weekday percentages
+                attended_days_set = set()  # To avoid counting multiple records on the same day
+                weekday_counts = [0] * 5  # Number of times attended on each weekday
+                weekday_totals = [0] * 5  # Total number of each weekday in the period
+
+                # Recalculate total weekdays for each day of the week
+                current_date = start_date
+                while current_date <= end_date:
+                    weekday = current_date.weekday()
+                    if weekday <= 4:  # Monday to Friday
+                        weekday_totals[weekday] += 1
+                    current_date += timedelta(days=1)
+
+                for record in student_attendance_records:
+                    record_date = datetime.strptime(record['date'], '%Y-%m-%d')
+                    if record_date.weekday() <= 4:  # Only count weekdays
+                        date_str = record['date']
+                        if date_str not in attended_days_set:
+                            attended_days_set.add(date_str)
+                            weekday = record_date.weekday()
+                            weekday_counts[weekday] += 1
+
+                attended_days = len(attended_days_set)
+                overall_percentage = round((attended_days / total_weekdays * 100) if total_weekdays > 0 else 0, 2)
+
+                # Calculate weekday attendance percentages
+                for i in range(5):  # Monday to Friday
+                    if weekday_totals[i] > 0:
+                        weekday_percentages[i] = round((weekday_counts[i] / weekday_totals[i]) * 100, 2)
+                    else:
+                        weekday_percentages[i] = 0
 
     return render_template('check_attendance.html',
                           students=students,
-                          by_day_records=by_day_records,
-                          by_student_records=by_student_records,
-                          selected_date=selected_date,
-                          selected_student=selected_student)
+                          student_attendance_records=student_attendance_records,
+                          selected_student=selected_student,
+                          overall_percentage=overall_percentage,
+                          attended_days=attended_days,
+                          total_weekdays=total_weekdays,
+                          weekday_percentages=weekday_percentages)
+
+
 
 # Run the app with SocketIO
 if __name__ == '__main__':
