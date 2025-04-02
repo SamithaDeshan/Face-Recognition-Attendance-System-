@@ -1,33 +1,20 @@
 {% extends "base.html" %}
-
 {% block title %}Registered Students{% endblock %}
-
 {% block content %}
     <div class="fixed-container single-section">
         <div class="container">
-            <!-- Registered Students Section -->
             <div class="section">
                 <h2>Registered Students</h2>
                 <div class="table-wrapper">
                     <table>
                         <thead>
-                            <tr>
-                                <th>S No</th>
-                                <th>Name</th>
-                                <th>ID</th>
-                            </tr>
+                            <tr><th>S No</th><th>Name</th><th>ID</th></tr>
                         </thead>
                         <tbody>
                             {% for student in students %}
-                            <tr>
-                                <td>{{ student.s_no }}</td>
-                                <td>{{ student.name }}</td>
-                                <td>{{ student.id }}</td>
-                            </tr>
+                                <tr><td>{{ student.s_no }}</td><td>{{ student.name }}</td><td>{{ student.id }}</td></tr>
                             {% else %}
-                            <tr>
-                                <td colspan="3">No students registered.</td>
-                            </tr>
+                                <tr><td colspan="3">No students registered.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Take Attendance{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="message" id="messageBox"></div>
+
+    <div class="fixed-container">
+        <div class="container single-column">
+            <!-- Today's Attendance -->
+            <div class="section attendance-section">
+                <h2>Today's Attendance ({{ current_date }})</h2>
+                <button class="button" onclick="openAttendancePopup()"><i class="fas fa-camera"></i> Take Attendance</button>
+                <div class="table-wrapper">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>S No</th>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceBody">
+                            {% for record in attendance %}
+                            <tr>
+                                <td>{{ record.s_no }}</td>
+                                <td>{{ record.name }}</td>
+                                <td>{{ record.id }}</td>
+                                <td>{{ record.time }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4">No attendance records for {{ current_date }}.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup for Attendance -->
+    <div class="overlay" id="attendanceOverlay"></div>
+    <div class="popup" id="attendancePopup">
+        <h3>Capture Face for Attendance</h3>
+        <video id="attendanceVideo" autoplay playsinline></video>
+        <canvas id="attendanceCanvas" style="display: none;"></canvas>
+        <div class="popup-buttons">
+            <button class="button" onclick="captureAttendance()"><i class="fas fa-camera"></i> Capture</button>
+            <button class="button" onclick="closeAttendancePopup()"><i class="fas fa-times"></i> Cancel</button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // Initialize SocketIO
+        const socket = io();
+
+        // Get the current date from the template
+        const currentDate = "{{ current_date }}";
+
+        let attendanceStream = null;
+
+        // Open popup for taking attendance
+        function openAttendancePopup() {
+            const popup = document.getElementById('attendancePopup');
+            const overlay = document.getElementById('attendanceOverlay');
+            const video = document.getElementById('attendanceVideo');
+
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    attendanceStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Error accessing webcam for attendance:", err);
+                });
+        }
+
+        // Close popup for taking attendance
+        function closeAttendancePopup() {
+            const popup = document.getElementById('attendancePopup');
+            const overlay = document.getElementById('attendanceOverlay');
+            const video = document.getElementById('attendanceVideo');
+
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            if (attendanceStream) {
+                attendanceStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                attendanceStream = null;
+            }
+        }
+
+        // Capture image for attendance
+        function captureAttendance() {
+            const video = document.getElementById('attendanceVideo');
+            const canvas = document.getElementById('attendanceCanvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            fetch('/take-attendance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'image_data': imageData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    setTimeout(() => {
+                        window.location.href = '/take-attendance-page';
+                    }, 3000);
+                }
+                closeAttendancePopup();
+            })
+            .catch(err => {
+                console.error("Error capturing attendance:", err);
+                closeAttendancePopup();
+            });
+        }
+
+        // Show message to the user
+        function showMessage(message, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.classList.add('show');
+            if (isError) {
+                messageBox.classList.add('error');
+            } else {
+                messageBox.classList.remove('error');
+            }
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // Listen for attendance updates
+        socket.on('attendance_update', function(data) {
+            const tbody = document.getElementById('attendanceBody');
+            tbody.innerHTML = '';
+            if (data.attendance.length > 0) {
+                data.attendance.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.s_no}</td>
+                        <td>${record.name}</td>
+                        <td>${record.id}</td>
+                        <td>${record.time}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4">No attendance records for ${currentDate}.</td>`;
+                tbody.appendChild(row);
+            }
+        });
+
+        // Listen for attendance messages
+        socket.on('attendance_message', function(data) {
+            showMessage(data.message, data.message.includes('already marked') || data.message.includes('not recognized') || data.message.includes('Invalid data'));
+        });
+    </script>
+{% endblock %}

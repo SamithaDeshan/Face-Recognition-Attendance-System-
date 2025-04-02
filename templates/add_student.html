@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Add New User{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+{% endblock %}
+
+{% block content %}
+    <div class="message" id="messageBox"></div>
+
+    <div class="fixed-container">
+        <div class="container single-column">
+            <!-- Add New User -->
+            <div class="section">
+                <div class="card">
+                    <h2>Add New User</h2>
+                    <form id="addStudentForm" action="{{ url_for('add_student') }}" method="post">
+                        <div class="form-group">
+                            <label for="name">Enter New User Name*</label>
+                            <input type="text" id="name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="department">Select Department*</label>
+                            <select id="department" name="department" required onchange="updateIdPrefix()">
+                                <option value="" disabled selected>Select a department</option>
+                                <option value="Bsc Hons Computer Engineering">Bsc Hons Computer Engineering</option>
+                                <option value="Bsc Hons Computer Science">Bsc Hons Computer Science</option>
+                                <option value="Bsc Hons Software Engineering">Bsc Hons Software Engineering</option>
+                                <option value="Bsc Hons Data Science and Business Analytics">Bsc Hons Data Science and Business Analytics</option>
+                                <option value="Bsc Hons Information Technology">Bsc Hons Information Technology</option>
+                                <option value="Bsc Hons Information Systems">Bsc Hons Information Systems</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Select Study Year*</label>
+                            <select id="year" name="year" required onchange="updateIdPrefix()">
+                                <option value="" disabled selected>Select a year</option>
+                                <option value="1st Year">1st Year</option>
+                                <option value="2nd Year">2nd Year</option>
+                                <option value="3rd Year">3rd Year</option>
+                                <option value="4th Year">4th Year</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="student_number">Student ID (Enter 4-digit number)*</label>
+                            <span id="id_prefix">D/</span><input type="text" id="student_number" name="student_number" maxlength="4" pattern="\d{4}" placeholder="e.g., 0002" required title="Enter a 4-digit student number">
+                            <input type="hidden" id="id" name="id">
+                        </div>
+                        <input type="hidden" id="image_data" name="image_data">
+                        <button type="button" class="button" onclick="openAddStudentPopup()"><i class="fas fa-user-plus"></i> Add New User</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup for Adding Student -->
+    <div class="overlay" id="addStudentOverlay"></div>
+    <div class="popup" id="addStudentPopup">
+        <h3>Capture Face for New Student</h3>
+        <video id="addStudentVideo" autoplay playsinline></video>
+        <canvas id="addStudentCanvas" style="display: none;"></canvas>
+        <div class="popup-buttons">
+            <button class="button" onclick="captureStudent()"><i class="fas fa-camera"></i> Capture</button>
+            <button class="button" onclick="closeAddStudentPopup()"><i class="fas fa-times"></i> Cancel</button>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        // Initialize SocketIO
+        const socket = io();
+
+        let addStudentStream = null;
+
+        // Degree to code mapping
+        const degreeToCode = {
+            "Bsc Hons Computer Engineering": "BCE",
+            "Bsc Hons Computer Science": "BCS",
+            "Bsc Hons Software Engineering": "BSE",
+            "Bsc Hons Data Science and Business Analytics": "DBA",
+            "Bsc Hons Information Technology": "BIT",
+            "Bsc Hons Information Systems": "BIS"
+        };
+
+        // Year to enroll year mapping
+        const yearToEnroll = {
+            "1st Year": "25",
+            "2nd Year": "24",
+            "3rd Year": "23",
+            "4th Year": "22"
+        };
+
+        // Function to update the ID prefix dynamically
+        function updateIdPrefix() {
+            const department = document.getElementById('department').value;
+            const year = document.getElementById('year').value;
+            const idPrefixSpan = document.getElementById('id_prefix');
+            let prefix = "D/";
+
+            if (department && year) {
+                const degreeCode = degreeToCode[department];
+                const enrollYear = yearToEnroll[year];
+                prefix = `D/${degreeCode}/${enrollYear}/`;
+            }
+
+            idPrefixSpan.textContent = prefix;
+        }
+
+        // Open popup for adding student
+        function openAddStudentPopup() {
+            const popup = document.getElementById('addStudentPopup');
+            const overlay = document.getElementById('addStudentOverlay');
+            const video = document.getElementById('addStudentVideo');
+
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    addStudentStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Error accessing webcam for adding student:", err);
+                });
+        }
+
+        // Close popup for adding student
+        function closeAddStudentPopup() {
+            const popup = document.getElementById('addStudentPopup');
+            const overlay = document.getElementById('addStudentOverlay');
+            const video = document.getElementById('addStudentVideo');
+
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            if (addStudentStream) {
+                addStudentStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                addStudentStream = null;
+            }
+        }
+
+        // Capture image for adding student
+        function captureStudent() {
+            const video = document.getElementById('addStudentVideo');
+            const canvas = document.getElementById('addStudentCanvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            const department = document.getElementById('department').value;
+            const year = document.getElementById('year').value;
+            const studentNumber = document.getElementById('student_number').value;
+            const degreeCode = degreeToCode[department];
+            const enrollYear = yearToEnroll[year];
+            const fullId = `D/${degreeCode}/${enrollYear}/${studentNumber}`;
+            document.getElementById('id').value = fullId;
+
+            fetch('/add-student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'name': document.getElementById('name').value,
+                    'id': fullId,
+                    'department': department,
+                    'year': year,
+                    'image_data': imageData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    setTimeout(() => {
+                        window.location.href = '/add-student-page';
+                    }, 3000);
+                }
+                closeAddStudentPopup();
+            })
+            .catch(err => {
+                console.error("Error adding student:", err);
+                closeAddStudentPopup();
+            });
+        }
+
+        // Show message to the user
+        function showMessage(message, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.classList.add('show');
+            if (isError) {
+                messageBox.classList.add('error');
+            } else {
+                messageBox.classList.remove('error');
+            }
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // Listen for student addition messages
+        socket.on('student_message', function(data) {
+            showMessage(data.message, data.message.includes('already registered') || data.message.includes('Invalid data'));
+        });
+    </script>
+{% endblock %}

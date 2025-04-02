@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Attendance System{% endblock %}
+{% block title %}Dashboard{% endblock %}
 
 {% block extra_head %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
@@ -9,123 +9,39 @@
 {% block content %}
     <div class="message" id="messageBox"></div>
 
-    <!-- Summary Section -->
-    <div class="summary">
-        <div class="card">
-            <h3>{{ total_students }}</h3>
-            <p>Total Students</p>
-        </div>
-        <div class="card">
-            <h3>{{ attendance | length }}</h3>
-            <p>Today's Attendance</p>
-        </div>
-        <div class="card">
-            <h3>{{ total_students - (attendance | length) }}</h3>
-            <p>Absentees</p>
-        </div>
-    </div>
-
-    <!-- Attendance Trends -->
-    <div class="card">
-        <h2>Attendance Trends</h2>
-        <div class="chart-container">
-            <canvas id="attendanceChart"></canvas>
-        </div>
-    </div>
-
-    <!-- Today's Attendance -->
-    <div class="card">
-        <h2>Today's Attendance ({{ current_date }})</h2>
-        <button class="button" onclick="openAttendancePopup()">Take Attendance</button>
-        <div class="table-wrapper">
-            <table id="attendanceTable">
-                <thead>
-                    <tr>
-                        <th>S No</th>
-                        <th>Name</th>
-                        <th>ID</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody id="attendanceBody">
-                    {% for record in attendance %}
-                    <tr>
-                        <td>{{ record.s_no }}</td>
-                        <td>{{ record.name }}</td>
-                        <td>{{ record.id }}</td>
-                        <td>{{ record.time }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4">No attendance records for {{ current_date }}.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- Add New User -->
-    <div class="card">
-        <h2>Add New User</h2>
-        <form id="addStudentForm" action="{{ url_for('add_student') }}" method="post">
-            <div class="form-group">
-                <label for="name">Enter New User Name*</label>
-                <input type="text" id="name" name="name" required>
+    <div class="fixed-container">
+        <div class="container single-column">
+            <!-- Summary Section -->
+            <div class="summary">
+                <div class="card">
+                    <h3>{{ total_students }}</h3>
+                    <p>Total Students</p>
+                </div>
+                <div class="card">
+                    <h3>{{ attendance | length }}</h3>
+                    <p>Today's Attendance</p>
+                </div>
+                <div class="card">
+                    <h3>{{ total_students - (attendance | length) }}</h3>
+                    <p>Absentees</p>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="department">Select Department*</label>
-                <select id="department" name="department" required onchange="updateIdPrefix()">
-                    <option value="" disabled selected>Select a department</option>
-                    <option value="Bsc Hons Computer Engineering">Bsc Hons Computer Engineering</option>
-                    <option value="Bsc Hons Computer Science">Bsc Hons Computer Science</option>
-                    <option value="Bsc Hons Software Engineering">Bsc Hons Software Engineering</option>
-                    <option value="Bsc Hons Data Science and Business Analytics">Bsc Hons Data Science and Business Analytics</option>
-                    <option value="Bsc Hons Information Technology">Bsc Hons Information Technology</option>
-                    <option value="Bsc Hons Information Systems">Bsc Hons Information Systems</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="year">Select Study Year*</label>
-                <select id="year" name="year" required onchange="updateIdPrefix()">
-                    <option value="" disabled selected>Select a year</option>
-                    <option value="1st Year">1st Year</option>
-                    <option value="2nd Year">2nd Year</option>
-                    <option value="3rd Year">3rd Year</option>
-                    <option value="4th Year">4th Year</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="student_number">Student ID (Enter 4-digit number)*</label>
-                <span id="id_prefix">D/</span><input type="text" id="student_number" name="student_number" maxlength="4" pattern="\d{4}" placeholder="e.g., 0002" required title="Enter a 4-digit student number">
-                <input type="hidden" id="id" name="id">
-            </div>
-            <input type="hidden" id="image_data" name="image_data">
-            <button type="button" class="button" onclick="openAddStudentPopup()">Add New User</button>
-        </form>
-    </div>
 
-    <!-- Popup for Attendance -->
-    <div class="overlay" id="attendanceOverlay"></div>
-    <div class="popup" id="attendancePopup">
-        <h3>Capture Face for Attendance</h3>
-        <video id="attendanceVideo" autoplay playsinline></video>
-        <canvas id="attendanceCanvas" style="display: none;"></canvas>
-        <div class="popup-buttons">
-            <button class="button" onclick="captureAttendance()">Capture</button>
-            <button class="button" onclick="closeAttendancePopup()">Cancel</button>
-        </div>
-    </div>
+            <!-- Attendance Trends (Monthly) -->
+            <div class="card">
+                <h2>Attendance Trends (Monthly)</h2>
+                <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+            </div>
 
-    <!-- Popup for Adding Student -->
-    <div class="overlay" id="addStudentOverlay"></div>
-    <div class="popup" id="addStudentPopup">
-        <h3>Capture Face for New Student</h3>
-        <video id="addStudentVideo" autoplay playsinline></video>
-        <canvas id="addStudentCanvas" style="display: none;"></canvas>
-        <div class="popup-buttons">
-            <button class="button" onclick="captureStudent()">Capture</button>
-            <button class="button" onclick="closeAddStudentPopup()">Cancel</button>
+            <!-- Weekly Attendance Trends (Monday to Friday) -->
+            <div class="card">
+                <h2>Weekly Attendance Trends ({{ current_month }})</h2>
+                <div class="chart-container">
+                    <canvas id="weeklyAttendanceChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 {% endblock %}
@@ -134,194 +50,6 @@
     <script>
         // Initialize SocketIO
         const socket = io();
-
-        // Get the current date from the template
-        const currentDate = "{{ current_date }}";
-
-        let attendanceStream = null;
-        let addStudentStream = null;
-
-        // Degree to code mapping
-        const degreeToCode = {
-            "Bsc Hons Computer Engineering": "BCE",
-            "Bsc Hons Computer Science": "BCS",
-            "Bsc Hons Software Engineering": "BSE",
-            "Bsc Hons Data Science and Business Analytics": "DBA",
-            "Bsc Hons Information Technology": "BIT",
-            "Bsc Hons Information Systems": "BIS"
-        };
-
-        // Year to enroll year mapping
-        const yearToEnroll = {
-            "1st Year": "25",
-            "2nd Year": "24",
-            "3rd Year": "23",
-            "4th Year": "22"
-        };
-
-        // Function to update the ID prefix dynamically
-        function updateIdPrefix() {
-            const department = document.getElementById('department').value;
-            const year = document.getElementById('year').value;
-            const idPrefixSpan = document.getElementById('id_prefix');
-            let prefix = "D/";
-
-            if (department && year) {
-                const degreeCode = degreeToCode[department];
-                const enrollYear = yearToEnroll[year];
-                prefix = `D/${degreeCode}/${enrollYear}/`;
-            }
-
-            idPrefixSpan.textContent = prefix;
-        }
-
-        // Open popup for taking attendance
-        function openAttendancePopup() {
-            const popup = document.getElementById('attendancePopup');
-            const overlay = document.getElementById('attendanceOverlay');
-            const video = document.getElementById('attendanceVideo');
-
-            popup.style.display = 'block';
-            overlay.style.display = 'block';
-
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    attendanceStream = stream;
-                    video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error("Error accessing webcam for attendance:", err);
-                });
-        }
-
-        // Close popup for taking attendance
-        function closeAttendancePopup() {
-            const popup = document.getElementById('attendancePopup');
-            const overlay = document.getElementById('attendanceOverlay');
-            const video = document.getElementById('attendanceVideo');
-
-            popup.style.display = 'none';
-            overlay.style.display = 'none';
-            if (attendanceStream) {
-                attendanceStream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-                attendanceStream = null;
-            }
-        }
-
-        // Open popup for adding student
-        function openAddStudentPopup() {
-            const popup = document.getElementById('addStudentPopup');
-            const overlay = document.getElementById('addStudentOverlay');
-            const video = document.getElementById('addStudentVideo');
-
-            popup.style.display = 'block';
-            overlay.style.display = 'block';
-
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(stream => {
-                    addStudentStream = stream;
-                    video.srcObject = stream;
-                })
-                .catch(err => {
-                    console.error("Error accessing webcam for adding student:", err);
-                });
-        }
-
-        // Close popup for adding student
-        function closeAddStudentPopup() {
-            const popup = document.getElementById('addStudentPopup');
-            const overlay = document.getElementById('addStudentOverlay');
-            const video = document.getElementById('addStudentVideo');
-
-            popup.style.display = 'none';
-            overlay.style.display = 'none';
-            if (addStudentStream) {
-                addStudentStream.getTracks().forEach(track => track.stop());
-                video.srcObject = null;
-                addStudentStream = null;
-            }
-        }
-
-        // Capture image for attendance
-        function captureAttendance() {
-            const video = document.getElementById('attendanceVideo');
-            const canvas = document.getElementById('attendanceCanvas');
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL('image/jpeg');
-
-            fetch('/take-attendance', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'image_data': imageData
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 3000);
-                }
-                closeAttendancePopup();
-            })
-            .catch(err => {
-                console.error("Error capturing attendance:", err);
-                closeAttendancePopup();
-            });
-        }
-
-        // Capture image for adding student
-        function captureStudent() {
-            const video = document.getElementById('addStudentVideo');
-            const canvas = document.getElementById('addStudentCanvas');
-            const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL('image/jpeg');
-
-            const department = document.getElementById('department').value;
-            const year = document.getElementById('year').value;
-            const studentNumber = document.getElementById('student_number').value;
-            const degreeCode = degreeToCode[department];
-            const enrollYear = yearToEnroll[year];
-            const fullId = `D/${degreeCode}/${enrollYear}/${studentNumber}`;
-            document.getElementById('id').value = fullId;
-
-            fetch('/add-student', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: new URLSearchParams({
-                    'name': document.getElementById('name').value,
-                    'id': fullId,
-                    'department': department,
-                    'year': year,
-                    'image_data': imageData
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 3000);
-                }
-                closeAddStudentPopup();
-            })
-            .catch(err => {
-                console.error("Error adding student:", err);
-                closeAddStudentPopup();
-            });
-        }
 
         // Show message to the user
         function showMessage(message, isError = false) {
@@ -342,92 +70,124 @@
             }, 3000);
         }
 
-        // Listen for attendance updates
-        socket.on('attendance_update', function(data) {
-            const tbody = document.getElementById('attendanceBody');
-            tbody.innerHTML = '';
-            if (data.attendance.length > 0) {
-                data.attendance.forEach(record => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${record.s_no}</td>
-                        <td>${record.name}</td>
-                        <td>${record.id}</td>
-                        <td>${record.time}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } else {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="4">No attendance records for ${currentDate}.</td>`;
-                tbody.appendChild(row);
-            }
-        });
-
-        // Listen for attendance messages
-        socket.on('attendance_message', function(data) {
-            showMessage(data.message, data.message.includes('already marked') || data.message.includes('not recognized') || data.message.includes('Invalid data'));
-        });
-
-        // Listen for student addition messages
-        socket.on('student_message', function(data) {
-            showMessage(data.message, data.message.includes('already registered') || data.message.includes('Invalid data'));
-        });
-
         // Listen for total students updates
         socket.on('total_students_update', function(data) {
             const summaryCard = document.querySelector('.summary .card:first-child h3');
             summaryCard.textContent = data.total_students;
         });
 
-        // Chart.js for Attendance Trends (Mock Data)
+        // Fetch monthly attendance trends data from the backend
         document.addEventListener('DOMContentLoaded', function() {
-            const ctx = document.getElementById('attendanceChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                    datasets: [{
-                        label: 'Attendance Rate (%)',
-                        data: [85, 90, 88, 92, 87, 91, 93, 89, 94, 90, 92, 95],
-                        borderColor: '#FF4D4D',
-                        backgroundColor: 'rgba(255, 77, 77, 0.2)',
-                        fill: true,
-                        tension: 0.4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100,
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#E0E0E0'
-                            }
+            // Monthly Attendance Chart
+            fetch('/attendance-trends')
+                .then(response => response.json())
+                .then(data => {
+                    const ctx = document.getElementById('attendanceChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels, // e.g., ['Jan', 'Feb', ...]
+                            datasets: [{
+                                label: 'Attendance Rate (%)',
+                                data: data.attendance_rates, // e.g., [85, 90, ...]
+                                borderColor: '#FF4D4D',
+                                backgroundColor: 'rgba(255, 77, 77, 0.2)',
+                                fill: true,
+                                tension: 0.4
+                            }]
                         },
-                        x: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#E0E0E0'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#E0E0E0'
+                                    }
+                                }
                             },
-                            ticks: {
-                                color: '#E0E0E0'
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: '#E0E0E0'
+                                    }
+                                }
                             }
                         }
-                    },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: '#E0E0E0'
+                    });
+                })
+                .catch(err => {
+                    console.error("Error fetching monthly attendance trends:", err);
+                    showMessage("Failed to load monthly attendance trends.", true);
+                });
+
+            // Weekly Attendance Chart (Monday to Friday)
+            fetch('/weekly-attendance-trends')
+                .then(response => response.json())
+                .then(data => {
+                    const ctxWeekly = document.getElementById('weeklyAttendanceChart').getContext('2d');
+                    new Chart(ctxWeekly, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels, // e.g., ['Monday', 'Tuesday', ...]
+                            datasets: [{
+                                label: 'Attendance Rate (%)',
+                                data: data.attendance_rates, // e.g., [80, 85, ...]
+                                backgroundColor: '#FF4D4D',
+                                borderColor: '#FF4D4D',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#E0E0E0'
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        color: 'rgba(255, 255, 255, 0.1)'
+                                    },
+                                    ticks: {
+                                        color: '#E0E0E0'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    labels: {
+                                        color: '#E0E0E0'
+                                    }
+                                }
                             }
                         }
-                    }
-                }
-            });
+                    });
+                })
+                .catch(err => {
+                    console.error("Error fetching weekly attendance trends:", err);
+                    showMessage("Failed to load weekly attendance trends.", true);
+                });
         });
     </script>
 {% endblock %}

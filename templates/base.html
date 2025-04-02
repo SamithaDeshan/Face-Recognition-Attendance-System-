@@ -10,44 +10,55 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="logo">SmartAttend</div>
-            <ul>
-                <li><a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">Home</a></li>
-                <li><a href="{{ url_for('check_attendance') }}" class="{% if request.endpoint == 'check_attendance' %}active{% endif %}">Check Attendance</a></li>
-                <li><a href="{{ url_for('registered_students') }}" class="{% if request.endpoint == 'registered_students' %}active{% endif %}">Registered Students</a></li>
-            </ul>
+    <!-- Modern Navbar -->
+    <nav class="modern-navbar">
+        <div class="navbar-logo">
+            <span class="logo">SmartAttend</span>
         </div>
-    </nav>
-
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <a href="{{ url_for('index') }}" title="Home"><i class="fas fa-home"></i></a>
-
-        <a href="{{ url_for('registered_students') }}" title="Registered Students"><i class="fas fa-users"></i></a>
-        <a href="{{ url_for('check_attendance') }}" title="Check Attendance"><i class="fas fa-check-circle"></i></a>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <!-- Search Bar -->
-        <div class="search-bar">
-            <input type="text" placeholder="Search records...">
-        </div>
-
-        {% block content %}
-        {% endblock %}
-    </div>
-
-    <!-- Footer -->
-    <footer>
-        <div class="footer-container">
+        <ul>
+            <li>
+                <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('take_attendance_page') }}" class="{% if request.endpoint == 'take_attendance_page' %}active{% endif %}">
+                    <i class="fas fa-camera"></i> Take Attendance
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('add_student_page') }}" class="{% if request.endpoint == 'add_student_page' %}active{% endif %}">
+                    <i class="fas fa-user-plus"></i> Add New User
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('view_attendance') }}" class="{% if request.endpoint == 'view_attendance' %}active{% endif %}">
+                    <i class="fas fa-calendar-alt"></i> View Attendance
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('registered_students') }}" class="{% if request.endpoint == 'registered_students' %}active{% endif %}">
+                    <i class="fas fa-users"></i> Registered Students
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('check_attendance') }}" class="{% if request.endpoint == 'check_attendance' %}active{% endif %}">
+                    <i class="fas fa-check-circle"></i> Check Attendance
+                </a>
+            </li>
+        </ul>
+        <!-- Footer Details at Bottom of Navbar -->
+        <div class="navbar-footer">
             <p>© Made by Samitha Deshan. All rights reserved.</p>
             <p><a href="https://www.linkedin.com/in/samitha-deshan-a61015265/">Contact me</a></p>
         </div>
-    </footer>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        {% block content %}
+        {% endblock %}
+    </div>
 
     <!-- Font Awesome for Icons -->
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>

@@ -1,4 +1,6 @@
 import os
+from cProfile import label
+
 import cv2
 import csv
 import numpy as np
@@ -8,6 +10,7 @@ from flask_socketio import SocketIO, emit
 import base64
 from io import BytesIO
 from PIL import Image
+from calendar import monthrange
 
 # Initialize Flask app and SocketIO
 app = Flask(__name__)
@@ -339,15 +342,151 @@ def get_all_students():
         print(f"Error reading {STUDENTS_CSV}: {e}")
     return students
 
+def get_attendance_trends():
+    """Calculate monthly attendance trends for the current year."""
+    current_year = datetime.now().year
+    labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    attendance_rates = [0] * 12  # Initialize attendance rates for each month
+
+    # Read all attendance records
+    all_records = []
+    try:
+        with open(ATTENDANCE_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            expected_headers = {'name', 'id', 'time'}
+            if reader.fieldnames is None or not expected_headers.issubset(reader.fieldnames):
+                print(f"Error: {ATTENDANCE_CSV} has incorrect headers.")
+                return {'labels': labels, 'attendance_rates': attendance_rates}
+
+            for row in reader:
+                all_records.append(row)
+    except FileNotFoundError:
+        print(f"Error: {ATTENDANCE_CSV} not found.")
+        return {'labels': labels, 'attendance_rates': attendance_rates}
+    except Exception as e:
+        print(f"Error reading {ATTENDANCE_CSV}: {e}")
+        return {'labels': labels, 'attendance_rates': attendance_rates}
+
+    # Process attendance records for the current year
+    for month in range(1, 13):  # 1 to 12 for each month
+        days_in_month = monthrange(current_year, month)[1]  # Number of days in the month
+        days_with_attendance = set()  # Track unique days with attendance
+
+        for record in all_records:
+            try:
+                record_date = datetime.strptime(record['time'], '%Y-%m-%d %H:%M:%S')
+                if record_date.year == current_year and record_date.month == month:
+                    days_with_attendance.add(record_date.day)
+            except ValueError:
+                continue
+
+        # Calculate attendance rate as the percentage of days with attendance
+        if days_in_month > 0:
+            attendance_rate = (len(days_with_attendance) / days_in_month) * 100
+            attendance_rates[month - 1] = round(attendance_rate, 2)
+
+    return {'labels': labels, 'attendance_rates': attendance_rates}
+
+def get_weekly_attendance_trends():
+    """Calculate weekly attendance trends (Monday to Friday) for the current month."""
+    current_year = datetime.now().year
+    current_month = datetime.now().month
+    total_students = len(get_all_students())
+    labels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+    attendance_rates = [0] * 5  # Initialize attendance rates for Monday to Friday
+    days_count = [0] * 5  # Count of each weekday in the month
+    attendance_counts = [0] * 5  # Total attendance percentage for each weekday
+
+    # Read all attendance records
+    all_records = []
+    try:
+        with open(ATTENDANCE_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            expected_headers = {'name', 'id', 'time'}
+            if reader.fieldnames is None or not expected_headers.issubset(reader.fieldnames):
+                print(f"Error: {ATTENDANCE_CSV} has incorrect headers.")
+                return {'labels': labels, 'attendance_rates': attendance_rates}
+
+            for row in reader:
+                all_records.append(row)
+    except FileNotFoundError:
+        print(f"Error: {ATTENDANCE_CSV} not found.")
+        return {'labels': labels, 'attendance_rates': attendance_rates}
+    except Exception as e:
+        print(f"Error reading {ATTENDANCE_CSV}: {e}")
+        return {'labels': labels, 'attendance_rates': attendance_rates}
+
+    # Count the number of each weekday in the current month
+    days_in_month = monthrange(current_year, current_month)[1]
+    for day in range(1, days_in_month + 1):
+        date = datetime(current_year, current_month, day)
+        weekday = date.weekday()  # 0 = Monday, 4 = Friday
+        if 0 <= weekday <= 4:  # Monday to Friday
+            days_count[weekday] += 1
+
+    # Process attendance records for the current month
+    daily_attendance = {}
+    for record in all_records:
+        try:
+            record_date = datetime.strptime(record['time'], '%Y-%m-%d %H:%M:%S')
+            if record_date.year == current_year and record_date.month == current_month:
+                date_str = record_date.strftime('%Y-%m-%d')
+                if date_str not in daily_attendance:
+                    daily_attendance[date_str] = set()
+                daily_attendance[date_str].add(record['id'])
+        except ValueError:
+            continue
+
+    # Calculate attendance rate for each weekday
+    for date_str, students in daily_attendance.items():
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        weekday = date.weekday()  # 0 = Monday, 4 = Friday
+        if 0 <= weekday <= 4:  # Monday to Friday
+            if total_students > 0:
+                attendance_rate = (len(students) / total_students) * 100
+                attendance_counts[weekday] += attendance_rate
+
+    # Average the attendance rates for each weekday
+    for i in range(5):  # Monday to Friday
+        if days_count[i] > 0:
+            attendance_rates[i] = round(attendance_counts[i] / days_count[i], 2)
+        else:
+            attendance_rates[i] = 0  # If no such weekday in the month, set to 0
+
+    return {'labels': labels, 'attendance_rates': attendance_rates}
+
 # Flask Routes
 @app.route('/')
 def index():
     """Render the main dashboard."""
     today_attendance = get_today_attendance()
     total_students = len(get_all_students())
+    current_month = datetime.now().strftime('%B %Y')  # e.g., "October 2023"
+    return render_template('index.html', attendance=today_attendance, total_students=total_students, current_month=current_month)
+
+@app.route('/attendance-trends')
+def attendance_trends():
+    """Provide monthly attendance trends data for the chart."""
+    trends = get_attendance_trends()
+    return jsonify(trends)
+
+@app.route('/weekly-attendance-trends')
+def weekly_attendance_trends():
+    """Provide weekly attendance trends data for the chart."""
+    trends = get_weekly_attendance_trends()
+    return jsonify(trends)
+
+@app.route('/take-attendance-page')
+def take_attendance_page():
+    """Render the Take Attendance page."""
+    today_attendance = get_today_attendance()
     current_date = datetime.now().strftime('%Y-%m-%d')
-    return render_template('index.html', attendance=today_attendance, total_students=total_students,
-                           current_date=current_date)
+    return render_template('take_attendance.html', attendance=today_attendance, current_date=current_date)
+
+@app.route('/add-student-page')
+def add_student_page():
+    """Render the Add New User page."""
+    return render_template('add_student.html')
 
 @app.route('/add-student', methods=['POST'])
 def add_student():
