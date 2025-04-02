@@ -47,9 +47,20 @@ body {
     font-size: 16px;
     transition: background 0.3s;
 }
+.modern-navbar i {
+            margin-right: 55px; /* Increased space between icon and text */
+            vertical-align: bottom; /* Align icon with text */
+            width: 20px; /* Set a consistent width for icons */
+            height: 20px; /* Set a consistent height for icons */
+            stroke-width: 2; /* Adjust the thickness of the icon lines */
+            color: #E0E0E0; /* Match the text color of the navbar */
+        }
 
+.modern-navbar a.active i {
+            color: #1E90FF; /* Match the active link color (blue) */
+        }
 .modern-navbar ul li a i {
-    margin-right: 10px;
+    margin-right: 40px;
 }
 
 .modern-navbar ul li a:hover {

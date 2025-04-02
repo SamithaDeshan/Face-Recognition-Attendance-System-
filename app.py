@@ -44,6 +44,50 @@ face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_fronta
 # Initialize the LBPH Face Recognizer
 recognizer = cv2.face.LBPHFaceRecognizer_create()
 
+# Add this near the top of app.py, with other imports
+import hashlib
+
+# Add this with other CSV file paths
+USERS_CSV = 'users.csv'
+
+# Initialize users.csv if it doesn't exist
+if not os.path.exists(USERS_CSV):
+    with open(USERS_CSV, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['first_name', 'last_name', 'email', 'password'])
+
+# Helper function to hash passwords (simple MD5 for demo purposes; use bcrypt in production)
+def hash_password(password):
+    return hashlib.md5(password.encode()).hexdigest()
+
+# Helper function to check if a user exists
+def user_exists(email):
+    try:
+        with open(USERS_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['email'] == email:
+                    return True
+    except FileNotFoundError:
+        print(f"Error: {USERS_CSV} not found.")
+    except Exception as e:
+        print(f"Error reading {USERS_CSV}: {e}")
+    return False
+
+# Helper function to verify user credentials
+def verify_user(email, password):
+    try:
+        with open(USERS_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['email'] == email and row['password'] == hash_password(password):
+                    return True
+    except FileNotFoundError:
+        print(f"Error: {USERS_CSV} not found.")
+    except Exception as e:
+        print(f"Error reading {USERS_CSV}: {e}")
+    return False
+
 # Helper functions
 def train_recognizer():
     """Train the recognizer with all student images."""
@@ -604,6 +648,46 @@ def registered_students():
     """View all registered students."""
     students = get_all_students()
     return render_template('registered_students.html', students=students)
+
+# Add this route with your other Flask routes
+@app.route('/auth', methods=['GET', 'POST'])
+def auth():
+    form_type = 'signup'  # Default to signup form
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'signup':
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+
+            if password != confirm_password:
+                return render_template('auth.html', form_type='signup', error="Passwords do not match.")
+
+            if user_exists(email):
+                return render_template('auth.html', form_type='signup', error="User with this email already exists.")
+
+            # Save the new user
+            with open(USERS_CSV, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([first_name, last_name, email, hash_password(password)])
+
+            # Redirect to dashboard after successful signup
+            return redirect(url_for('index'))
+
+        elif action == 'login':
+            email = request.form.get('email')
+            password = request.form.get('password')
+
+            if verify_user(email, password):
+                # Redirect to the dashboard
+                return redirect(url_for('index'))
+            else:
+                return render_template('auth.html', form_type='login', error="Invalid email or password.")
+
+    return render_template('auth.html', form_type=form_type)
+
 
 @app.route('/check_attendance', methods=['GET', 'POST'])
 def check_attendance():

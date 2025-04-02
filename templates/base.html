@@ -7,6 +7,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add Feather Icons CDN -->
+    <script src="https://unpkg.com/feather-icons"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
@@ -18,28 +20,32 @@
         <ul>
             <li>
                 <a href="{{ url_for('index') }}" class="{% if request.endpoint == 'index' %}active{% endif %}">
-                    <i class="fas fa-home"></i> Dashboard
+                    <i data-feather="home"></i> Dashboard
                 </a>
             </li>
             <li>
                 <a href="{{ url_for('take_attendance_page') }}" class="{% if request.endpoint == 'take_attendance_page' %}active{% endif %}">
-                    <i class="fas fa-camera"></i> Take Attendance
+                    <i data-feather="camera"></i> Take Attendance
                 </a>
             </li>
             <li>
                 <a href="{{ url_for('add_student_page') }}" class="{% if request.endpoint == 'add_student_page' %}active{% endif %}">
-                    <i class="fas fa-user-plus"></i> Add New User
+                    <i data-feather="user-plus"></i> Add New User
                 </a>
             </li>
-
             <li>
                 <a href="{{ url_for('registered_students') }}" class="{% if request.endpoint == 'registered_students' %}active{% endif %}">
-                    <i class="fas fa-users"></i> Registered Students
+                    <i data-feather="users"></i> Registered Students
                 </a>
             </li>
             <li>
                 <a href="{{ url_for('check_attendance') }}" class="{% if request.endpoint == 'check_attendance' %}active{% endif %}">
-                    <i class="fas fa-check-circle"></i> Check Attendance
+                    <i data-feather="check-circle"></i> Check Attendance
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('auth') }}" class="{% if request.endpoint == 'auth' %}active{% endif %}">
+                    <i data-feather="log-out"></i> Logout
                 </a>
             </li>
         </ul>
@@ -56,9 +62,29 @@
         {% endblock %}
     </div>
 
-    <!-- Font Awesome for Icons -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <!-- Initialize Feather Icons -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            feather.replace();
+        });
+    </script>
     {% block scripts %}
     {% endblock %}
+
+    <!-- Add CSS for Feather Icons -->
+    <style>
+        .modern-navbar i {
+            margin-right: 15px; /* Space between icon and text */
+            vertical-align: middle; /* Align icon with text */
+            width: 20px; /* Set a consistent width for icons */
+            height: 20px; /* Set a consistent height for icons */
+            stroke-width: 2; /* Adjust the thickness of the icon lines */
+            color: #E0E0E0; /* Match the text color of the navbar */
+        }
+
+        .modern-navbar a.active i {
+            color: #1E90FF; /* Match the active link color (blue) */
+        }
+    </style>
 </body>
 </html>
