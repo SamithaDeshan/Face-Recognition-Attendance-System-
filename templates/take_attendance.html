@@ -1,280 +1,276 @@
 {% extends "base.html" %}
 
-{% block title %}Take Attendance{% endblock %}
+{% block title %}Attendance System{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <h1>Take Attendance - {{ current_date }}</h1>
-        <div class="camera-container">
-            <button id="start-camera-btn" class="btn">Start Camera</button>
-            <div class="video-wrapper" style="display: none;">
-                <video id="video" autoplay playsinline></video>
-                <canvas id="overlay" style="position: absolute; top: 0; left: 0;"></canvas>
+    <div class="message" id="messageBox"></div>
+    <div class="fixed-container">
+        <div class="container">
+            <!-- Today's Attendance Section -->
+            <div class="section attendance-section">
+                <h2>Today's Attendance ({{ current_date }})</h2>
+                <button class="button" onclick="openAttendancePopup()">Take Attendance</button>
+                <h2> </h2>
+                <div class="table-wrapper">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>S No</th>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceBody">
+                            {% for record in attendance %}
+                            <tr>
+                                <td>{{ record.s_no }}</td>
+                                <td>{{ record.name }}</td>
+                                <td>{{ record.id }}</td>
+                                <td>{{ record.time }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4">No attendance records for {{ current_date }}.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <button id="capture-btn" class="btn" style="display: none;">Capture and Mark Attendance</button>
+
+
+
         </div>
-        <div id="attendance-message" class="message"></div>
-        <h2>Today's Attendance</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>S.No</th>
-                    <th>Name</th>
-                    <th>ID</th>
-                    <th>Time</th>
-                </tr>
-            </thead>
-            <tbody id="attendance-table">
-                {% for record in attendance %}
-                    <tr>
-                        <td>{{ record.s_no }}</td>
-                        <td>{{ record.name }}</td>
-                        <td>{{ record.id }}</td>
-                        <td>{{ record.time }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
     </div>
+
+    <!-- Popup for Attendance -->
+    <div class="overlay" id="attendanceOverlay"></div>
+    <div class="popup" id="attendancePopup">
+        <h3>Capture Face for Attendance</h3>
+        <video id="attendanceVideo" autoplay playsinline></video>
+        <canvas id="attendanceCanvas" style="display: none;"></canvas>
+        <div class="popup-buttons">
+            <button class="button" onclick="captureAttendance()">Capture</button>
+            <button class="button" onclick="closeAttendancePopup()">Cancel</button>
+        </div>
+    </div>
+
+
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script>
+        // Initialize SocketIO
         const socket = io();
-        const startCameraBtn = document.getElementById('start-camera-btn');
-        const videoWrapper = document.querySelector('.video-wrapper');
-        const video = document.getElementById('video');
-        const overlay = document.getElementById('overlay');
-        const ctx = overlay.getContext('2d');
-        const captureBtn = document.getElementById('capture-btn');
-        const attendanceMessage = document.getElementById('attendance-message');
-        const attendanceTable = document.getElementById('attendance-table');
-        let stream = null;
-        let faceDetected = false;
 
-        // Start the camera when the "Start Camera" button is clicked
-        startCameraBtn.addEventListener('click', () => {
+        // Get the current date from the template
+        const currentDate = "{{ current_date }}";
+
+        let attendanceStream = null;
+        let addStudentStream = null;
+
+        // Open popup for taking attendance
+        function openAttendancePopup() {
+            const popup = document.getElementById('attendancePopup');
+            const overlay = document.getElementById('attendanceOverlay');
+            const video = document.getElementById('attendanceVideo');
+
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+
             navigator.mediaDevices.getUserMedia({ video: true })
-                .then(s => {
-                    stream = s;
+                .then(stream => {
+                    attendanceStream = stream;
                     video.srcObject = stream;
-                    video.play();
-                    videoWrapper.style.display = 'inline-block';
-                    startCameraBtn.style.display = 'none';
-                    captureBtn.style.display = 'inline-block';
-                    adjustCanvasSize();
                 })
                 .catch(err => {
-                    console.error("Error accessing webcam:", err);
-                    attendanceMessage.textContent = "Error accessing webcam. Please allow camera access.";
+                    console.error("Error accessing webcam for attendance:", err);
                 });
-        });
-
-        // Adjust canvas size to match video
-        function adjustCanvasSize() {
-            overlay.width = video.videoWidth;
-            overlay.height = video.videoHeight;
         }
 
-        video.addEventListener('loadedmetadata', adjustCanvasSize);
+        // Close popup for taking attendance
+        function closeAttendancePopup() {
+            const popup = document.getElementById('attendancePopup');
+            const overlay = document.getElementById('attendanceOverlay');
+            const video = document.getElementById('attendanceVideo');
 
-        // Continuously send video frames to the server for face detection
-        function sendFrameForDetection() {
-            if (!stream) return; // Stop if the stream is closed
-
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = canvas.toDataURL('image/jpeg');
-
-            fetch('/detect-face', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ image_data: imageData })
-            })
-            .then(response => response.json())
-            .then(data => {
-                ctx.clearRect(0, 0, overlay.width, overlay.height);
-                faceDetected = false;
-
-                if (data.faces && data.faces.length > 0) {
-                    faceDetected = true;
-                    data.faces.forEach(face => {
-                        const { x, y, w, h } = face;
-                        // Draw a blue square around the face, matching the image
-                        ctx.strokeStyle = '#0000FF'; // Blue border
-                        ctx.lineWidth = 3;
-                        ctx.strokeRect(x, y, w, h);
-                    });
-                }
-
-                // Continue sending frames
-                requestAnimationFrame(sendFrameForDetection);
-            })
-            .catch(err => {
-                console.error("Error detecting face:", err);
-                requestAnimationFrame(sendFrameForDetection);
-            });
-        }
-
-        // Start sending frames when the video is playing
-        video.addEventListener('play', () => {
-            requestAnimationFrame(sendFrameForDetection);
-        });
-
-        // Capture the image and send it for attendance marking
-        captureBtn.addEventListener('click', () => {
-            if (!faceDetected) {
-                attendanceMessage.textContent = "No face detected. Please ensure a face is visible in the camera.";
-                return;
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            if (attendanceStream) {
+                attendanceStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                attendanceStream = null;
             }
+        }
 
-            const canvas = document.createElement('canvas');
+        // Open popup for adding student
+        function openAddStudentPopup() {
+            const popup = document.getElementById('addStudentPopup');
+            const overlay = document.getElementById('addStudentOverlay');
+            const video = document.getElementById('addStudentVideo');
+
+            popup.style.display = 'block';
+            overlay.style.display = 'block';
+
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    addStudentStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error("Error accessing webcam for adding student:", err);
+                });
+        }
+
+        // Close popup for adding student
+        function closeAddStudentPopup() {
+            const popup = document.getElementById('addStudentPopup');
+            const overlay = document.getElementById('addStudentOverlay');
+            const video = document.getElementById('addStudentVideo');
+
+            popup.style.display = 'none';
+            overlay.style.display = 'none';
+            if (addStudentStream) {
+                addStudentStream.getTracks().forEach(track => track.stop());
+                video.srcObject = null;
+                addStudentStream = null;
+            }
+        }
+
+        // Capture image for attendance
+        function captureAttendance() {
+            const video = document.getElementById('attendanceVideo');
+            const canvas = document.getElementById('attendanceCanvas');
+            const context = canvas.getContext('2d');
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
             const imageData = canvas.toDataURL('image/jpeg');
 
+            // Send the image to the server
             fetch('/take-attendance', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 },
-                body: `image_data=${encodeURIComponent(imageData)}`
+                body: new URLSearchParams({
+                    'image_data': imageData
+                })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    attendanceMessage.textContent = data.message;
-                    // Stop the camera after successful capture
-                    stopCamera();
-                } else {
-                    attendanceMessage.textContent = data.message;
+                    // Wait for the success message to be displayed, then redirect
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000); // Match the message display duration
                 }
+                closeAttendancePopup();
             })
             .catch(err => {
-                console.error("Error marking attendance:", err);
-                attendanceMessage.textContent = "Error marking attendance. Please try again.";
+                console.error("Error capturing attendance:", err);
+                closeAttendancePopup();
             });
-        });
-
-        // Function to stop the camera
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-                video.srcObject = null;
-                videoWrapper.style.display = 'none';
-                startCameraBtn.style.display = 'inline-block';
-                captureBtn.style.display = 'none';
-                ctx.clearRect(0, 0, overlay.width, overlay.height);
-            }
         }
 
-        // SocketIO event listeners
-        socket.on('attendance_update', data => {
-            attendanceTable.innerHTML = '';
-            data.attendance.forEach(record => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${record.s_no}</td>
-                    <td>${record.name}</td>
-                    <td>${record.id}</td>
-                    <td>${record.time}</td>
-                `;
-                attendanceTable.appendChild(row);
+        // Capture image for adding student
+        function captureStudent() {
+            const video = document.getElementById('addStudentVideo');
+            const canvas = document.getElementById('addStudentCanvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            // Send the image to the server
+            fetch('/add-student', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'name': document.getElementById('name').value,
+                    'id': document.getElementById('id').value,
+                    'image_data': imageData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Wait for the success message to be displayed, then redirect
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 3000); // Match the message display duration
+                }
+                closeAddStudentPopup();
+            })
+            .catch(err => {
+                console.error("Error adding student:", err);
+                closeAddStudentPopup();
             });
+        }
+
+        // Show message to the user
+        function showMessage(message, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.classList.add('show');
+            if (isError) {
+                messageBox.classList.add('error');
+            } else {
+                messageBox.classList.remove('error');
+            }
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, 300); // Wait for fade-out animation to complete
+            }, 3000); // Hide after 3 seconds
+        }
+
+        // Listen for attendance updates
+        socket.on('attendance_update', function(data) {
+            const tbody = document.getElementById('attendanceBody');
+            tbody.innerHTML = '';  // Clear the table
+            if (data.attendance.length > 0) {
+                data.attendance.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.s_no}</td>
+                        <td>${record.name}</td>
+                        <td>${record.id}</td>
+                        <td>${record.time}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4">No attendance records for ${currentDate}.</td>`;
+                tbody.appendChild(row);
+            }
         });
 
-        socket.on('attendance_message', data => {
-            attendanceMessage.textContent = data.message;
+        // Listen for attendance messages
+        socket.on('attendance_message', function(data) {
+            showMessage(data.message, data.message.includes('already marked') || data.message.includes('not recognized') || data.message.includes('Invalid data'));
+        });
+
+        // Listen for student addition messages
+        socket.on('student_message', function(data) {
+            showMessage(data.message, data.message.includes('already registered') || data.message.includes('Invalid data'));
+        });
+
+        // Listen for total students updates
+        socket.on('total_students_update', function(data) {
+            const totalUsersDiv = document.querySelector('.total-users');
+            totalUsersDiv.textContent = `Total Users in Database: ${data.total_students}`;
         });
     </script>
-
-    <style>
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        h1, h2 {
-            color: #E0E0E0;
-            text-align: center;
-        }
-
-        .camera-container {
-            text-align: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .video-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        #video {
-            width: 100%;
-            max-width: 640px;
-            border-radius: 10px;
-        }
-
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-        }
-
-        .btn {
-            background-color: #1E90FF;
-            color: #E0E0E0;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background-color 0.3s ease;
-        }
-
-        .btn:hover {
-            background-color: #187BCD;
-        }
-
-        .message {
-            text-align: center;
-            color: #FF5555;
-            margin: 10px 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #2A2A2A;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            color: #E0E0E0;
-        }
-
-        th {
-            background-color: #1E90FF;
-        }
-
-        tr:nth-child(even) {
-            background-color: #333;
-        }
-    </style>
 {% endblock %}

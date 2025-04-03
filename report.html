@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+        .passed { background-color: #00FF00; color: black; }
+        .failed { background-color: #FF0000; color: white; }
+        .skipped { background-color: #FFFF00; color: black; }
+    </style>
+    
+    <meta charset="utf-8"/>
+    <title id="head-title">report.html</title>
+      <style type="text/css">body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #e6e6e6;
+  vertical-align: top;
+}
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+#environment ul {
+  margin: 0;
+  padding: 0 20px;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed,
+.passed .col-result {
+  color: green;
+}
+
+span.skipped,
+span.xfailed,
+span.rerun,
+.skipped .col-result,
+.xfailed .col-result,
+.rerun .col-result {
+  color: orange;
+}
+
+span.error,
+span.failed,
+span.xpassed,
+.error .col-result,
+.failed .col-result,
+.xpassed .col-result {
+  color: red;
+}
+
+.col-links__extra {
+  margin-right: 3px;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+#results-table th,
+#results-table td {
+  padding: 5px;
+  border: 1px solid #e6e6e6;
+  text-align: left;
+}
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.logwrapper {
+  max-height: 230px;
+  overflow-y: scroll;
+  background-color: #e6e6e6;
+}
+.logwrapper.expanded {
+  max-height: none;
+}
+.logwrapper.expanded .logexpander:after {
+  content: "collapse [-]";
+}
+.logwrapper .logexpander {
+  z-index: 1;
+  position: sticky;
+  top: 10px;
+  width: max-content;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 5px 7px;
+  margin: 10px 0 10px calc(100% - 80px);
+  cursor: pointer;
+  background-color: #e6e6e6;
+}
+.logwrapper .logexpander:after {
+  content: "expand [+]";
+}
+.logwrapper .logexpander:hover {
+  color: #000;
+  border-color: #000;
+}
+.logwrapper .log {
+  min-height: 40px;
+  position: relative;
+  top: -50px;
+  height: calc(100% + 50px);
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  padding: 5px;
+  padding-right: 80px;
+  white-space: pre-wrap;
+}
+
+div.media {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin: 0 5px;
+  overflow: hidden;
+  width: 320px;
+}
+
+.media-container {
+  display: grid;
+  grid-template-columns: 25px auto 25px;
+  align-items: center;
+  flex: 1 1;
+  overflow: hidden;
+  height: 200px;
+}
+
+.media-container--fullscreen {
+  grid-template-columns: 0px auto 0px;
+}
+
+.media-container__nav--right,
+.media-container__nav--left {
+  text-align: center;
+  cursor: pointer;
+}
+
+.media-container__viewport {
+  cursor: pointer;
+  text-align: center;
+  height: inherit;
+}
+.media-container__viewport img,
+.media-container__viewport video {
+  object-fit: cover;
+  width: 100%;
+  max-height: 100%;
+}
+
+.media__name,
+.media__counter {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  flex: 0 0 25px;
+  align-items: center;
+}
+
+.collapsible td:not(.col-links) {
+  cursor: pointer;
+}
+.collapsible td:not(.col-links):hover::after {
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.col-result {
+  width: 130px;
+}
+.col-result:hover::after {
+  content: " (hide details)";
+}
+
+.col-result.collapsed:hover::after {
+  content: " (show details)";
+}
+
+#environment-header h2:hover::after {
+  content: " (hide details)";
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#environment-header.collapsed h2:hover::after {
+  content: " (show details)";
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+.sortable.desc:after {
+  content: " ";
+  position: relative;
+  left: 5px;
+  bottom: -12.5px;
+  border: 10px solid #4caf50;
+  border-bottom: 0;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+.sortable.asc:after {
+  content: " ";
+  position: relative;
+  left: 5px;
+  bottom: 12.5px;
+  border: 10px solid #4caf50;
+  border-top: 0;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.hidden, .summary__reload__button.hidden {
+  display: none;
+}
+
+.summary__data {
+  flex: 0 0 550px;
+}
+.summary__reload {
+  flex: 1 1;
+  display: flex;
+  justify-content: center;
+}
+.summary__reload__button {
+  flex: 0 0 300px;
+  display: flex;
+  color: white;
+  font-weight: bold;
+  background-color: #4caf50;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.summary__reload__button:hover {
+  background-color: #46a049;
+}
+.summary__spacer {
+  flex: 0 0 550px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+}
+
+.filters,
+.collapse {
+  display: flex;
+  align-items: center;
+}
+.filters button,
+.collapse button {
+  color: #999;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.filters button:hover,
+.collapse button:hover {
+  color: #ccc;
+}
+
+.filter__label {
+  margin-right: 10px;
+}
+
+      </style>
+    
+  </head>
+  <body><div style="text-align: center;"><img src="data:image/png;base64,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" alt="Test Results Chart"/></div><hr>
+    <h1 id="title">report.html</h1>
+    <p>Report generated on 03-Apr-2025 at 18:43:29 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a>
+        v4.1.1</p>
+    <div id="environment-header">
+      <h2>Environment</h2>
+    </div>
+    <table id="environment"></table>
+    <!-- TEMPLATES -->
+      <template id="template_environment_row">
+      <tr>
+        <td></td>
+        <td></td>
+      </tr>
+    </template>
+    <template id="template_results-table__body--empty">
+      <tbody class="results-table-row">
+        <tr id="not-found-message">
+          <td colspan="4">No results found. Check the filters.</th>
+        </tr>
+    </template>
+    <template id="template_results-table__tbody">
+      <tbody class="results-table-row">
+        <tr class="collapsible">
+        </tr>
+        <tr class="extras-row">
+          <td class="extra" colspan="4">
+            <div class="extraHTML"></div>
+            <div class="media">
+              <div class="media-container">
+                  <div class="media-container__nav--left"><</div>
+                  <div class="media-container__viewport">
+                    <img src="" />
+                    <video controls>
+                      <source src="" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="media-container__nav--right">></div>
+                </div>
+                <div class="media__name"></div>
+                <div class="media__counter"></div>
+            </div>
+            <div class="logwrapper">
+              <div class="logexpander"></div>
+              <div class="log"></div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </template>
+    <!-- END TEMPLATES -->
+    <div class="summary">
+      <div class="summary__data">
+        <h2>Summary</h2>
+        <div class="additional-summary prefix">
+        </div>
+        <p class="run-count">10 tests took 73 ms.</p>
+        <p class="filter">(Un)check the boxes to filter the results.</p>
+        <div class="summary__reload">
+          <div class="summary__reload__button hidden" onclick="location.reload()">
+            <div>There are still tests running. <br />Reload this page to get the latest results!</div>
+          </div>
+        </div>
+        <div class="summary__spacer"></div>
+        <div class="controls">
+          <div class="filters">
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="failed" />
+            <span class="failed">1 Failed,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="passed" />
+            <span class="passed">9 Passed,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="skipped" disabled/>
+            <span class="skipped">0 Skipped,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="xfailed" disabled/>
+            <span class="xfailed">0 Expected failures,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="xpassed" disabled/>
+            <span class="xpassed">0 Unexpected passes,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="error" disabled/>
+            <span class="error">0 Errors,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="rerun" disabled/>
+            <span class="rerun">0 Reruns</span>
+          </div>
+          <div class="collapse">
+            <button id="show_all_details">Show all details</button>&nbsp;/&nbsp;<button id="hide_all_details">Hide all details</button>
+          </div>
+        </div>
+      </div>
+      <div class="additional-summary summary">
+      </div>
+      <div class="additional-summary postfix">
+      </div>
+    </div>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable" data-column-type="result">Result</th>
+          <th class="sortable" data-column-type="testId">Test</th>
+          <th class="sortable" data-column-type="duration">Duration</th>
+          <th>Links</th>
+        </tr>
+      </thead>
+    </table>
+  </body>
+  <footer>
+    <div id="data-container" data-jsonblob="{&#34;environment&#34;: {&#34;Python&#34;: &#34;3.12.8&#34;, &#34;Platform&#34;: &#34;Windows-10-10.0.19045-SP0&#34;, &#34;Packages&#34;: {&#34;pytest&#34;: &#34;8.3.5&#34;, &#34;pluggy&#34;: &#34;1.5.0&#34;}, &#34;Plugins&#34;: {&#34;html&#34;: &#34;4.1.1&#34;, &#34;metadata&#34;: &#34;3.1.1&#34;}}, &#34;tests&#34;: {&#34;test_app.py::TestSmartAttend::test_hash_password&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_hash_password&#34;, &#34;duration&#34;: &#34;11 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_hash_password&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;11 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_sanitize_filename&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_sanitize_filename&#34;, &#34;duration&#34;: &#34;4 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_sanitize_filename&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;4 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_signup_and_login&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Failed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_signup_and_login&#34;, &#34;duration&#34;: &#34;28 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Failed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_signup_and_login&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;28 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;self = &amp;lt;test_app.TestSmartAttend testMethod=test_signup_and_login&amp;gt;\n\n    def test_signup_and_login(self):\n        # Test sign-up\n        signup_data = {\n            &amp;#x27;action&amp;#x27;: &amp;#x27;signup&amp;#x27;,\n            &amp;#x27;first_name&amp;#x27;: &amp;#x27;Alice&amp;#x27;,\n            &amp;#x27;last_name&amp;#x27;: &amp;#x27;Smith&amp;#x27;,\n            &amp;#x27;email&amp;#x27;: &amp;#x27;alice@example.com&amp;#x27;,\n            &amp;#x27;password&amp;#x27;: &amp;#x27;password123&amp;#x27;,\n            &amp;#x27;confirm_password&amp;#x27;: &amp;#x27;password123&amp;#x27;\n        }\n        response = self.app.post(&amp;#x27;/auth&amp;#x27;, data=signup_data, follow_redirects=True)\n        self.assertEqual(response.status_code, 200)\n&amp;gt;       self.assertIn(b&amp;#x27;Current Month&amp;#x27;, response.data)  # Check if redirected to dashboard\nE       AssertionError: b&amp;#x27;Current Month&amp;#x27; not found in b&amp;#x27;&amp;lt;!DOCTYPE html&amp;gt;\\n&amp;lt;html lang=&amp;quot;en&amp;quot;&amp;gt;\\n&amp;lt;head&amp;gt;\\n    &amp;lt;meta charset=&amp;quot;UTF-8&amp;quot;&amp;gt;\\n    &amp;lt;meta name=&amp;quot;viewport&amp;quot; content=&amp;quot;width=device-width, initial-scale=1.0&amp;quot;&amp;gt;\\n    &amp;lt;title&amp;gt;SmartAttend - Dashboard&amp;lt;/title&amp;gt;\\n    &amp;lt;link href=&amp;quot;https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;amp;display=swap&amp;quot; rel=&amp;quot;stylesheet&amp;quot;&amp;gt;\\n    &amp;lt;link rel=&amp;quot;stylesheet&amp;quot; href=&amp;quot;/static/style.css&amp;quot;&amp;gt;\\n    &amp;lt;script src=&amp;quot;https://cdn.jsdelivr.net/npm/chart.js&amp;quot;&amp;gt;&amp;lt;/script&amp;gt;\\n    &amp;lt;!-- Add Feather Icons CDN --&amp;gt;\\n    &amp;lt;script src=&amp;quot;https://unpkg.com/feather-icons&amp;quot;&amp;gt;&amp;lt;/script&amp;gt;\\n    \\n    &amp;lt;script src=&amp;quot;https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js&amp;quot;&amp;gt;&amp;lt;/script&amp;gt;\\n\\n&amp;lt;/head&amp;gt;\\n&amp;lt;body&amp;gt;\\n    &amp;lt;!-- Modern Navbar --&amp;gt;\\n    &amp;lt;nav class=&amp;quot;modern-navbar&amp;quot;&amp;gt;\\n        &amp;lt;div class=&amp;quot;navbar-logo&amp;quot;&amp;gt;\\n            &amp;lt;span class=&amp;quot;logo&amp;quot;&amp;gt;SmartAttend&amp;lt;/span&amp;gt;\\n        &amp;lt;/div&amp;gt;\\n        &amp;lt;ul&amp;gt;\\n            &amp;lt;li&amp;gt;\\n                &amp;lt;a href=&amp;quot;/&amp;quot; class=&amp;quot;active&amp;quot;&amp;gt;\\n                    &amp;lt;i data-feather=&amp;quot;home&amp;quot;&amp;gt;&amp;lt;/i&amp;gt; Dashboard\\n                &amp;lt;/a&amp;gt;\\n            &amp;lt;/li&amp;gt;\\n            &amp;lt;li&amp;gt;\\n                &amp;lt;a href=&amp;quot;/take-attendance-page&amp;quot; class=&amp;quot;&amp;quot;&amp;gt;\\n                    &amp;lt;i data-feather=&amp;quot;camera&amp;quot;&amp;gt;&amp;lt;/i&amp;gt; Take Attendance\\n                &amp;lt;/a&amp;gt;\\n            &amp;lt;/li&amp;gt;\\n            &amp;lt;li&amp;gt;\\n                &amp;lt;a href=&amp;quot;/add-student-page&amp;quot; class=&amp;quot;&amp;quot;&amp;gt;\\n                    &amp;lt;i data-feather=&amp;quot;user-plus&amp;quot;&amp;gt;&amp;lt;/i&amp;gt; Add New User\\n                &amp;lt;/a&amp;gt;\\n            &amp;lt;/li&amp;gt;\\n            &amp;lt;li&amp;gt;\\n                &amp;lt;a href=&amp;quot;/registered-students&amp;quot; class=&amp;quot;&amp;quot;&amp;gt;\\n                    &amp;lt;i data-feather=&amp;quot;users&amp;quot;&amp;gt;&amp;lt;/i&amp;gt; Registered Students\\n                &amp;lt;/a&amp;gt;\\n            &amp;lt;/li&amp;gt;\\n            &amp;lt;li&amp;gt;\\n                &amp;lt;a href=&amp;quot;/check_attendance&amp;quot; class=&amp;quot;&amp;quot;&amp;gt;\\n                    &amp;lt;i data-feather=&amp;quot;check-circle&amp;quot;&amp;gt;&amp;lt;/i&amp;gt; Check Attendance\\n                &amp;lt;/a&amp;gt;\\n            &amp;lt;/li&amp;gt;\\n            &amp;lt;li&amp;gt;\\n                &amp;lt;a href=&amp;quot;/auth&amp;quot; class=&amp;quot;&amp;quot;&amp;gt;\\n                    &amp;lt;i data-feather=&amp;quot;log-out&amp;quot;&amp;gt;&amp;lt;/i&amp;gt; Logout\\n                &amp;lt;/a&amp;gt;\\n            &amp;lt;/li&amp;gt;\\n        &amp;lt;/ul&amp;gt;\\n        &amp;lt;!-- Footer Details at Bottom of Navbar --&amp;gt;\\n        &amp;lt;div class=&amp;quot;navbar-footer&amp;quot;&amp;gt;\\n            &amp;lt;p&amp;gt;\\xc2\\xa9 Made by Samitha Deshan. All rights reserved.&amp;lt;/p&amp;gt;\\n            &amp;lt;p&amp;gt;&amp;lt;a href=&amp;quot;https://www.linkedin.com/in/samitha-deshan-a61015265/&amp;quot;&amp;gt;Contact me&amp;lt;/a&amp;gt;&amp;lt;/p&amp;gt;\\n        &amp;lt;/div&amp;gt;\\n    &amp;lt;/nav&amp;gt;\\n\\n    &amp;lt;!-- Main Content --&amp;gt;\\n    &amp;lt;div class=&amp;quot;main-content&amp;quot;&amp;gt;\\n        \\n    &amp;lt;div class=&amp;quot;message&amp;quot; id=&amp;quot;messageBox&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;\\n\\n    &amp;lt;div class=&amp;quot;fixed-container&amp;quot;&amp;gt;\\n        &amp;lt;div class=&amp;quot;container single-column&amp;quot;&amp;gt;\\n            &amp;lt;!-- Summary Section --&amp;gt;\\n            &amp;lt;div class=&amp;quot;summary&amp;quot;&amp;gt;\\n                &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;\\n                    &amp;lt;h3&amp;gt;1&amp;lt;/h3&amp;gt;\\n                    &amp;lt;p&amp;gt;Total Students&amp;lt;/p&amp;gt;\\n                &amp;lt;/div&amp;gt;\\n                &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;\\n                    &amp;lt;h3&amp;gt;7&amp;lt;/h3&amp;gt;\\n                    &amp;lt;p&amp;gt;Today\\&amp;#x27;s Attendance&amp;lt;/p&amp;gt;\\n                &amp;lt;/div&amp;gt;\\n                &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;\\n                    &amp;lt;h3&amp;gt;-6&amp;lt;/h3&amp;gt;\\n                    &amp;lt;p&amp;gt;Absentees&amp;lt;/p&amp;gt;\\n                &amp;lt;/div&amp;gt;\\n            &amp;lt;/div&amp;gt;\\n\\n            &amp;lt;!-- Attendance Trends (Monthly) --&amp;gt;\\n            &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;\\n                &amp;lt;h2&amp;gt;Attendance Trends (Monthly)&amp;lt;/h2&amp;gt;\\n                &amp;lt;div class=&amp;quot;chart-container&amp;quot;&amp;gt;\\n                    &amp;lt;canvas id=&amp;quot;attendanceChart&amp;quot;&amp;gt;&amp;lt;/canvas&amp;gt;\\n                &amp;lt;/div&amp;gt;\\n            &amp;lt;/div&amp;gt;\\n\\n            &amp;lt;!-- Weekly Attendance Trends (Monday to Friday) --&amp;gt;\\n            &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;\\n                &amp;lt;h2&amp;gt;Weekly Attendance Trends (April 2025)&amp;lt;/h2&amp;gt;\\n                &amp;lt;div class=&amp;quot;chart-container&amp;quot;&amp;gt;\\n                    &amp;lt;canvas id=&amp;quot;weeklyAttendanceChart&amp;quot;&amp;gt;&amp;lt;/canvas&amp;gt;\\n                &amp;lt;/div&amp;gt;\\n            &amp;lt;/div&amp;gt;\\n        &amp;lt;/div&amp;gt;\\n    &amp;lt;/div&amp;gt;\\n\\n    &amp;lt;/div&amp;gt;\\n\\n    &amp;lt;!-- Initialize Feather Icons --&amp;gt;\\n    &amp;lt;script&amp;gt;\\n        document.addEventListener(\\&amp;#x27;DOMContentLoaded\\&amp;#x27;, function() {\\n            feather.replace();\\n        });\\n    &amp;lt;/script&amp;gt;\\n    \\n    &amp;lt;script&amp;gt;\\n        // Initialize SocketIO\\n        const socket = io();\\n\\n        // Show message to the user\\n        function showMessage(message, isError = false) {\\n            const messageBox = document.getElementById(\\&amp;#x27;messageBox\\&amp;#x27;);\\n            messageBox.textContent = message;\\n            messageBox.style.display = \\&amp;#x27;block\\&amp;#x27;;\\n            messageBox.classList.add(\\&amp;#x27;show\\&amp;#x27;);\\n            if (isError) {\\n                messageBox.classList.add(\\&amp;#x27;error\\&amp;#x27;);\\n            } else {\\n                messageBox.classList.remove(\\&amp;#x27;error\\&amp;#x27;);\\n            }\\n            setTimeout(() =&amp;gt; {\\n                messageBox.classList.remove(\\&amp;#x27;show\\&amp;#x27;);\\n                setTimeout(() =&amp;gt; {\\n                    messageBox.style.display = \\&amp;#x27;none\\&amp;#x27;;\\n                }, 300);\\n            }, 3000);\\n        }\\n\\n        // Listen for total students updates\\n        socket.on(\\&amp;#x27;total_students_update\\&amp;#x27;, function(data) {\\n            const summaryCard = document.querySelector(\\&amp;#x27;.summary .card:first-child h3\\&amp;#x27;);\\n            summaryCard.textContent = data.total_students;\\n        });\\n\\n        // Fetch monthly attendance trends data from the backend\\n        document.addEventListener(\\&amp;#x27;DOMContentLoaded\\&amp;#x27;, function() {\\n            // Monthly Attendance Chart\\n            fetch(\\&amp;#x27;/attendance-trends\\&amp;#x27;)\\n                .then(response =&amp;gt; response.json())\\n                .then(data =&amp;gt; {\\n                    const ctx = document.getElementById(\\&amp;#x27;attendanceChart\\&amp;#x27;).getContext(\\&amp;#x27;2d\\&amp;#x27;);\\n                    new Chart(ctx, {\\n                        type: \\&amp;#x27;line\\&amp;#x27;,\\n                        data: {\\n                            labels: data.labels, // e.g., [\\&amp;#x27;Jan\\&amp;#x27;, \\&amp;#x27;Feb\\&amp;#x27;, ...]\\n                            datasets: [{\\n                                label: \\&amp;#x27;Attendance Rate (%)\\&amp;#x27;,\\n                                data: data.attendance_rates, // e.g., [85, 90, ...]\\n                                borderColor: \\&amp;#x27;#1E90FF\\&amp;#x27;, // Changed to blue (Dodger Blue)\\n                                backgroundColor: \\&amp;#x27;rgba(30, 144, 255, 0.2)\\&amp;#x27;, // Light blue fill\\n                                fill: true,\\n                                tension: 0.4\\n                            }]\\n                        },\\n                        options: {\\n                            responsive: true,\\n                            maintainAspectRatio: false,\\n                            scales: {\\n                                y: {\\n                                    beginAtZero: true,\\n                                    max: 100,\\n                                    grid: {\\n                                        color: \\&amp;#x27;rgba(255, 255, 255, 0.1)\\&amp;#x27;\\n                                    },\\n                                    ticks: {\\n                                        color: \\&amp;#x27;#E0E0E0\\&amp;#x27;\\n                                    }\\n                                },\\n                                x: {\\n                                    grid: {\\n                                        color: \\&amp;#x27;rgba(255, 255, 255, 0.1)\\&amp;#x27;\\n                                    },\\n                                    ticks: {\\n                                        color: \\&amp;#x27;#E0E0E0\\&amp;#x27;\\n                                    }\\n                                }\\n                            },\\n                            plugins: {\\n                                legend: {\\n                                    labels: {\\n                                        color: \\&amp;#x27;#E0E0E0\\&amp;#x27;\\n                                    }\\n                                }\\n                            }\\n                        }\\n                    });\\n                })\\n                .catch(err =&amp;gt; {\\n                    console.error(&amp;quot;Error fetching monthly attendance trends:&amp;quot;, err);\\n                    showMessage(&amp;quot;Failed to load monthly attendance trends.&amp;quot;, true);\\n                });\\n\\n            // Weekly Attendance Chart (Monday to Friday)\\n            fetch(\\&amp;#x27;/weekly-attendance-trends\\&amp;#x27;)\\n                .then(response =&amp;gt; response.json())\\n                .then(data =&amp;gt; {\\n                    const ctxWeekly = document.getElementById(\\&amp;#x27;weeklyAttendanceChart\\&amp;#x27;).getContext(\\&amp;#x27;2d\\&amp;#x27;);\\n                    new Chart(ctxWeekly, {\\n                        type: \\&amp;#x27;bar\\&amp;#x27;,\\n                        data: {\\n                            labels: data.labels, // e.g., [\\&amp;#x27;Monday\\&amp;#x27;, \\&amp;#x27;Tuesday\\&amp;#x27;, ...]\\n                            datasets: [{\\n                                label: \\&amp;#x27;Attendance Rate (%)\\&amp;#x27;,\\n                                data: data.attendance_rates, // e.g., [80, 85, ...]\\n                                backgroundColor: \\&amp;#x27;#1E90FF\\&amp;#x27;, // Changed to blue (Dodger Blue)\\n                                borderColor: \\&amp;#x27;#1E90FF\\&amp;#x27;, // Changed to blue (Dodger Blue)\\n                                borderWidth: 1\\n                            }]\\n                        },\\n                        options: {\\n                            responsive: true,\\n                            maintainAspectRatio: false,\\n                            scales: {\\n                                y: {\\n                                    beginAtZero: true,\\n                                    max: 100,\\n                                    grid: {\\n                                        color: \\&amp;#x27;rgba(255, 255, 255, 0.1)\\&amp;#x27;\\n                                    },\\n                                    ticks: {\\n                                        color: \\&amp;#x27;#E0E0E0\\&amp;#x27;\\n                                    }\\n                                },\\n                                x: {\\n                                    grid: {\\n                                        color: \\&amp;#x27;rgba(255, 255, 255, 0.1)\\&amp;#x27;\\n                                    },\\n                                    ticks: {\\n                                        color: \\&amp;#x27;#E0E0E0\\&amp;#x27;\\n                                    }\\n                                }\\n                            },\\n                            plugins: {\\n                                legend: {\\n                                    labels: {\\n                                        color: \\&amp;#x27;#E0E0E0\\&amp;#x27;\\n                                    }\\n                                }\\n                            }\\n                        }\\n                    });\\n                })\\n                .catch(err =&amp;gt; {\\n                    console.error(&amp;quot;Error fetching weekly attendance trends:&amp;quot;, err);\\n                    showMessage(&amp;quot;Failed to load weekly attendance trends.&amp;quot;, true);\\n                });\\n        });\\n    &amp;lt;/script&amp;gt;\\n\\n\\n    &amp;lt;!-- Add CSS for Feather Icons --&amp;gt;\\n    &amp;lt;style&amp;gt;\\n        .modern-navbar i {\\n            margin-right: 15px; /* Space between icon and text */\\n            vertical-align: middle; /* Align icon with text */\\n            width: 20px; /* Set a consistent width for icons */\\n            height: 20px; /* Set a consistent height for icons */\\n            stroke-width: 2; /* Adjust the thickness of the icon lines */\\n            color: #E0E0E0; /* Match the text color of the navbar */\\n        }\\n\\n        .modern-navbar a.active i {\\n            color: #1E90FF; /* Match the active link color (blue) */\\n        }\\n    &amp;lt;/style&amp;gt;\\n&amp;lt;/body&amp;gt;\\n&amp;lt;/html&amp;gt;&amp;#x27;\n\ntest_app.py:84: AssertionError\n&#34;}], &#34;test_app.py::TestSmartAttend::test_student_exists_existing&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_student_exists_existing&#34;, &#34;duration&#34;: &#34;3 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_student_exists_existing&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;3 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_student_exists_non_existing&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_student_exists_non_existing&#34;, &#34;duration&#34;: &#34;4 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_student_exists_non_existing&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;4 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_user_exists_existing&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_user_exists_existing&#34;, &#34;duration&#34;: &#34;4 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_user_exists_existing&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;4 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_user_exists_non_existing&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_user_exists_non_existing&#34;, &#34;duration&#34;: &#34;5 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_user_exists_non_existing&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;5 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_verify_user_invalid_email&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_verify_user_invalid_email&#34;, &#34;duration&#34;: &#34;4 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_verify_user_invalid_email&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;4 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_verify_user_invalid_password&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_verify_user_invalid_password&#34;, &#34;duration&#34;: &#34;4 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_verify_user_invalid_password&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;4 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;test_app.py::TestSmartAttend::test_verify_user_valid&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;test_app.py::TestSmartAttend::test_verify_user_valid&#34;, &#34;duration&#34;: &#34;5 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;test_app.py::TestSmartAttend::test_verify_user_valid&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;5 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}]}, &#34;renderCollapsed&#34;: [&#34;passed&#34;], &#34;initialSort&#34;: &#34;result&#34;, &#34;title&#34;: &#34;report.html&#34;}"></div>
+    <script>
+      (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+const { getCollapsedCategory, setCollapsedIds } = require('./storage.js')
+
+class DataManager {
+    setManager(data) {
+        const collapsedCategories = [...getCollapsedCategory(data.renderCollapsed)]
+        const collapsedIds = []
+        const tests = Object.values(data.tests).flat().map((test, index) => {
+            const collapsed = collapsedCategories.includes(test.result.toLowerCase())
+            const id = `test_${index}`
+            if (collapsed) {
+                collapsedIds.push(id)
+            }
+            return {
+                ...test,
+                id,
+                collapsed,
+            }
+        })
+        const dataBlob = { ...data, tests }
+        this.data = { ...dataBlob }
+        this.renderData = { ...dataBlob }
+        setCollapsedIds(collapsedIds)
+    }
+
+    get allData() {
+        return { ...this.data }
+    }
+
+    resetRender() {
+        this.renderData = { ...this.data }
+    }
+
+    setRender(data) {
+        this.renderData.tests = [...data]
+    }
+
+    toggleCollapsedItem(id) {
+        this.renderData.tests = this.renderData.tests.map((test) =>
+            test.id === id ? { ...test, collapsed: !test.collapsed } : test,
+        )
+    }
+
+    set allCollapsed(collapsed) {
+        this.renderData = { ...this.renderData, tests: [...this.renderData.tests.map((test) => (
+            { ...test, collapsed }
+        ))] }
+    }
+
+    get testSubset() {
+        return [...this.renderData.tests]
+    }
+
+    get environment() {
+        return this.renderData.environment
+    }
+
+    get initialSort() {
+        return this.data.initialSort
+    }
+}
+
+module.exports = {
+    manager: new DataManager(),
+}
+
+},{"./storage.js":8}],2:[function(require,module,exports){
+const mediaViewer = require('./mediaviewer.js')
+const templateEnvRow = document.getElementById('template_environment_row')
+const templateResult = document.getElementById('template_results-table__tbody')
+
+function htmlToElements(html) {
+    const temp = document.createElement('template')
+    temp.innerHTML = html
+    return temp.content.childNodes
+}
+
+const find = (selector, elem) => {
+    if (!elem) {
+        elem = document
+    }
+    return elem.querySelector(selector)
+}
+
+const findAll = (selector, elem) => {
+    if (!elem) {
+        elem = document
+    }
+    return [...elem.querySelectorAll(selector)]
+}
+
+const dom = {
+    getStaticRow: (key, value) => {
+        const envRow = templateEnvRow.content.cloneNode(true)
+        const isObj = typeof value === 'object' && value !== null
+        const values = isObj ? Object.keys(value).map((k) => `${k}: ${value[k]}`) : null
+
+        const valuesElement = htmlToElements(
+            values ? `<ul>${values.map((val) => `<li>${val}</li>`).join('')}<ul>` : `<div>${value}</div>`)[0]
+        const td = findAll('td', envRow)
+        td[0].textContent = key
+        td[1].appendChild(valuesElement)
+
+        return envRow
+    },
+    getResultTBody: ({ testId, id, log, extras, resultsTableRow, tableHtml, result, collapsed }) => {
+        const resultBody = templateResult.content.cloneNode(true)
+        resultBody.querySelector('tbody').classList.add(result.toLowerCase())
+        resultBody.querySelector('tbody').id = testId
+        resultBody.querySelector('.collapsible').dataset.id = id
+
+        resultsTableRow.forEach((html) => {
+            const t = document.createElement('template')
+            t.innerHTML = html
+            resultBody.querySelector('.collapsible').appendChild(t.content)
+        })
+
+        if (log) {
+            // Wrap lines starting with "E" with span.error to color those lines red
+            const wrappedLog = log.replace(/^E.*$/gm, (match) => `<span class="error">${match}</span>`)
+            resultBody.querySelector('.log').innerHTML = wrappedLog
+        } else {
+            resultBody.querySelector('.log').remove()
+        }
+
+        if (collapsed) {
+            resultBody.querySelector('.collapsible > td')?.classList.add('collapsed')
+            resultBody.querySelector('.extras-row').classList.add('hidden')
+        } else {
+            resultBody.querySelector('.collapsible > td')?.classList.remove('collapsed')
+        }
+
+        const media = []
+        extras?.forEach(({ name, format_type, content }) => {
+            if (['image', 'video'].includes(format_type)) {
+                media.push({ path: content, name, format_type })
+            }
+
+            if (format_type === 'html') {
+                resultBody.querySelector('.extraHTML').insertAdjacentHTML('beforeend', `<div>${content}</div>`)
+            }
+        })
+        mediaViewer.setup(resultBody, media)
+
+        // Add custom html from the pytest_html_results_table_html hook
+        tableHtml?.forEach((item) => {
+            resultBody.querySelector('td[class="extra"]').insertAdjacentHTML('beforeend', item)
+        })
+
+        return resultBody
+    },
+}
+
+module.exports = {
+    dom,
+    htmlToElements,
+    find,
+    findAll,
+}
+
+},{"./mediaviewer.js":6}],3:[function(require,module,exports){
+const { manager } = require('./datamanager.js')
+const { doSort } = require('./sort.js')
+const storageModule = require('./storage.js')
+
+const getFilteredSubSet = (filter) =>
+    manager.allData.tests.filter(({ result }) => filter.includes(result.toLowerCase()))
+
+const doInitFilter = () => {
+    const currentFilter = storageModule.getVisible()
+    const filteredSubset = getFilteredSubSet(currentFilter)
+    manager.setRender(filteredSubset)
+}
+
+const doFilter = (type, show) => {
+    if (show) {
+        storageModule.showCategory(type)
+    } else {
+        storageModule.hideCategory(type)
+    }
+
+    const currentFilter = storageModule.getVisible()
+    const filteredSubset = getFilteredSubSet(currentFilter)
+    manager.setRender(filteredSubset)
+
+    const sortColumn = storageModule.getSort()
+    doSort(sortColumn, true)
+}
+
+module.exports = {
+    doFilter,
+    doInitFilter,
+}
+
+},{"./datamanager.js":1,"./sort.js":7,"./storage.js":8}],4:[function(require,module,exports){
+const { redraw, bindEvents, renderStatic } = require('./main.js')
+const { doInitFilter } = require('./filter.js')
+const { doInitSort } = require('./sort.js')
+const { manager } = require('./datamanager.js')
+const data = JSON.parse(document.getElementById('data-container').dataset.jsonblob)
+
+function init() {
+    manager.setManager(data)
+    doInitFilter()
+    doInitSort()
+    renderStatic()
+    redraw()
+    bindEvents()
+}
+
+init()
+
+},{"./datamanager.js":1,"./filter.js":3,"./main.js":5,"./sort.js":7}],5:[function(require,module,exports){
+const { dom, find, findAll } = require('./dom.js')
+const { manager } = require('./datamanager.js')
+const { doSort } = require('./sort.js')
+const { doFilter } = require('./filter.js')
+const {
+    getVisible,
+    getCollapsedIds,
+    setCollapsedIds,
+    getSort,
+    getSortDirection,
+    possibleFilters,
+} = require('./storage.js')
+
+const removeChildren = (node) => {
+    while (node.firstChild) {
+        node.removeChild(node.firstChild)
+    }
+}
+
+const renderStatic = () => {
+    const renderEnvironmentTable = () => {
+        const environment = manager.environment
+        const rows = Object.keys(environment).map((key) => dom.getStaticRow(key, environment[key]))
+        const table = document.getElementById('environment')
+        removeChildren(table)
+        rows.forEach((row) => table.appendChild(row))
+    }
+    renderEnvironmentTable()
+}
+
+const addItemToggleListener = (elem) => {
+    elem.addEventListener('click', ({ target }) => {
+        const id = target.parentElement.dataset.id
+        manager.toggleCollapsedItem(id)
+
+        const collapsedIds = getCollapsedIds()
+        if (collapsedIds.includes(id)) {
+            const updated = collapsedIds.filter((item) => item !== id)
+            setCollapsedIds(updated)
+        } else {
+            collapsedIds.push(id)
+            setCollapsedIds(collapsedIds)
+        }
+        redraw()
+    })
+}
+
+const renderContent = (tests) => {
+    const sortAttr = getSort(manager.initialSort)
+    const sortAsc = JSON.parse(getSortDirection())
+    const rows = tests.map(dom.getResultTBody)
+    const table = document.getElementById('results-table')
+    const tableHeader = document.getElementById('results-table-head')
+
+    const newTable = document.createElement('table')
+    newTable.id = 'results-table'
+
+    // remove all sorting classes and set the relevant
+    findAll('.sortable', tableHeader).forEach((elem) => elem.classList.remove('asc', 'desc'))
+    tableHeader.querySelector(`.sortable[data-column-type="${sortAttr}"]`)?.classList.add(sortAsc ? 'desc' : 'asc')
+    newTable.appendChild(tableHeader)
+
+    if (!rows.length) {
+        const emptyTable = document.getElementById('template_results-table__body--empty').content.cloneNode(true)
+        newTable.appendChild(emptyTable)
+    } else {
+        rows.forEach((row) => {
+            if (!!row) {
+                findAll('.collapsible td:not(.col-links', row).forEach(addItemToggleListener)
+                find('.logexpander', row).addEventListener('click',
+                    (evt) => evt.target.parentNode.classList.toggle('expanded'),
+                )
+                newTable.appendChild(row)
+            }
+        })
+    }
+
+    table.replaceWith(newTable)
+}
+
+const renderDerived = () => {
+    const currentFilter = getVisible()
+    possibleFilters.forEach((result) => {
+        const input = document.querySelector(`input[data-test-result="${result}"]`)
+        input.checked = currentFilter.includes(result)
+    })
+}
+
+const bindEvents = () => {
+    const filterColumn = (evt) => {
+        const { target: element } = evt
+        const { testResult } = element.dataset
+
+        doFilter(testResult, element.checked)
+        const collapsedIds = getCollapsedIds()
+        const updated = manager.renderData.tests.map((test) => {
+            return {
+                ...test,
+                collapsed: collapsedIds.includes(test.id),
+            }
+        })
+        manager.setRender(updated)
+        redraw()
+    }
+
+    const header = document.getElementById('environment-header')
+    header.addEventListener('click', () => {
+        const table = document.getElementById('environment')
+        table.classList.toggle('hidden')
+        header.classList.toggle('collapsed')
+    })
+
+    findAll('input[name="filter_checkbox"]').forEach((elem) => {
+        elem.addEventListener('click', filterColumn)
+    })
+
+    findAll('.sortable').forEach((elem) => {
+        elem.addEventListener('click', (evt) => {
+            const { target: element } = evt
+            const { columnType } = element.dataset
+            doSort(columnType)
+            redraw()
+        })
+    })
+
+    document.getElementById('show_all_details').addEventListener('click', () => {
+        manager.allCollapsed = false
+        setCollapsedIds([])
+        redraw()
+    })
+    document.getElementById('hide_all_details').addEventListener('click', () => {
+        manager.allCollapsed = true
+        const allIds = manager.renderData.tests.map((test) => test.id)
+        setCollapsedIds(allIds)
+        redraw()
+    })
+}
+
+const redraw = () => {
+    const { testSubset } = manager
+
+    renderContent(testSubset)
+    renderDerived()
+}
+
+module.exports = {
+    redraw,
+    bindEvents,
+    renderStatic,
+}
+
+},{"./datamanager.js":1,"./dom.js":2,"./filter.js":3,"./sort.js":7,"./storage.js":8}],6:[function(require,module,exports){
+class MediaViewer {
+    constructor(assets) {
+        this.assets = assets
+        this.index = 0
+    }
+
+    nextActive() {
+        this.index = this.index === this.assets.length - 1 ? 0 : this.index + 1
+        return [this.activeFile, this.index]
+    }
+
+    prevActive() {
+        this.index = this.index === 0 ? this.assets.length - 1 : this.index -1
+        return [this.activeFile, this.index]
+    }
+
+    get currentIndex() {
+        return this.index
+    }
+
+    get activeFile() {
+        return this.assets[this.index]
+    }
+}
+
+
+const setup = (resultBody, assets) => {
+    if (!assets.length) {
+        resultBody.querySelector('.media').classList.add('hidden')
+        return
+    }
+
+    const mediaViewer = new MediaViewer(assets)
+    const container = resultBody.querySelector('.media-container')
+    const leftArrow = resultBody.querySelector('.media-container__nav--left')
+    const rightArrow = resultBody.querySelector('.media-container__nav--right')
+    const mediaName = resultBody.querySelector('.media__name')
+    const counter = resultBody.querySelector('.media__counter')
+    const imageEl = resultBody.querySelector('img')
+    const sourceEl = resultBody.querySelector('source')
+    const videoEl = resultBody.querySelector('video')
+
+    const setImg = (media, index) => {
+        if (media?.format_type === 'image') {
+            imageEl.src = media.path
+
+            imageEl.classList.remove('hidden')
+            videoEl.classList.add('hidden')
+        } else if (media?.format_type === 'video') {
+            sourceEl.src = media.path
+
+            videoEl.classList.remove('hidden')
+            imageEl.classList.add('hidden')
+        }
+
+        mediaName.innerText = media?.name
+        counter.innerText = `${index + 1} / ${assets.length}`
+    }
+    setImg(mediaViewer.activeFile, mediaViewer.currentIndex)
+
+    const moveLeft = () => {
+        const [media, index] = mediaViewer.prevActive()
+        setImg(media, index)
+    }
+    const doRight = () => {
+        const [media, index] = mediaViewer.nextActive()
+        setImg(media, index)
+    }
+    const openImg = () => {
+        window.open(mediaViewer.activeFile.path, '_blank')
+    }
+    if (assets.length === 1) {
+        container.classList.add('media-container--fullscreen')
+    } else {
+        leftArrow.addEventListener('click', moveLeft)
+        rightArrow.addEventListener('click', doRight)
+    }
+    imageEl.addEventListener('click', openImg)
+}
+
+module.exports = {
+    setup,
+}
+
+},{}],7:[function(require,module,exports){
+const { manager } = require('./datamanager.js')
+const storageModule = require('./storage.js')
+
+const genericSort = (list, key, ascending, customOrder) => {
+    let sorted
+    if (customOrder) {
+        sorted = list.sort((a, b) => {
+            const aValue = a.result.toLowerCase()
+            const bValue = b.result.toLowerCase()
+
+            const aIndex = customOrder.findIndex((item) => item.toLowerCase() === aValue)
+            const bIndex = customOrder.findIndex((item) => item.toLowerCase() === bValue)
+
+            // Compare the indices to determine the sort order
+            return aIndex - bIndex
+        })
+    } else {
+        sorted = list.sort((a, b) => a[key] === b[key] ? 0 : a[key] > b[key] ? 1 : -1)
+    }
+
+    if (ascending) {
+        sorted.reverse()
+    }
+    return sorted
+}
+
+const durationSort = (list, ascending) => {
+    const parseDuration = (duration) => {
+        if (duration.includes(':')) {
+            // If it's in the format "HH:mm:ss"
+            const [hours, minutes, seconds] = duration.split(':').map(Number)
+            return (hours * 3600 + minutes * 60 + seconds) * 1000
+        } else {
+            // If it's in the format "nnn ms"
+            return parseInt(duration)
+        }
+    }
+    const sorted = list.sort((a, b) => parseDuration(a['duration']) - parseDuration(b['duration']))
+    if (ascending) {
+        sorted.reverse()
+    }
+    return sorted
+}
+
+const doInitSort = () => {
+    const type = storageModule.getSort(manager.initialSort)
+    const ascending = storageModule.getSortDirection()
+    const list = manager.testSubset
+    const initialOrder = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed', 'Skipped', 'Passed']
+
+    storageModule.setSort(type)
+    storageModule.setSortDirection(ascending)
+
+    if (type?.toLowerCase() === 'original') {
+        manager.setRender(list)
+    } else {
+        let sortedList
+        switch (type) {
+        case 'duration':
+            sortedList = durationSort(list, ascending)
+            break
+        case 'result':
+            sortedList = genericSort(list, type, ascending, initialOrder)
+            break
+        default:
+            sortedList = genericSort(list, type, ascending)
+            break
+        }
+        manager.setRender(sortedList)
+    }
+}
+
+const doSort = (type, skipDirection) => {
+    const newSortType = storageModule.getSort(manager.initialSort) !== type
+    const currentAsc = storageModule.getSortDirection()
+    let ascending
+    if (skipDirection) {
+        ascending = currentAsc
+    } else {
+        ascending = newSortType ? false : !currentAsc
+    }
+    storageModule.setSort(type)
+    storageModule.setSortDirection(ascending)
+
+    const list = manager.testSubset
+    const sortedList = type === 'duration' ? durationSort(list, ascending) : genericSort(list, type, ascending)
+    manager.setRender(sortedList)
+}
+
+module.exports = {
+    doInitSort,
+    doSort,
+}
+
+},{"./datamanager.js":1,"./storage.js":8}],8:[function(require,module,exports){
+const possibleFilters = [
+    'passed',
+    'skipped',
+    'failed',
+    'error',
+    'xfailed',
+    'xpassed',
+    'rerun',
+]
+
+const getVisible = () => {
+    const url = new URL(window.location.href)
+    const settings = new URLSearchParams(url.search).get('visible')
+    const lower = (item) => {
+        const lowerItem = item.toLowerCase()
+        if (possibleFilters.includes(lowerItem)) {
+            return lowerItem
+        }
+        return null
+    }
+    return settings === null ?
+        possibleFilters :
+        [...new Set(settings?.split(',').map(lower).filter((item) => item))]
+}
+
+const hideCategory = (categoryToHide) => {
+    const url = new URL(window.location.href)
+    const visibleParams = new URLSearchParams(url.search).get('visible')
+    const currentVisible = visibleParams ? visibleParams.split(',') : [...possibleFilters]
+    const settings = [...new Set(currentVisible)].filter((f) => f !== categoryToHide).join(',')
+
+    url.searchParams.set('visible', settings)
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const showCategory = (categoryToShow) => {
+    if (typeof window === 'undefined') {
+        return
+    }
+    const url = new URL(window.location.href)
+    const currentVisible = new URLSearchParams(url.search).get('visible')?.split(',').filter(Boolean) ||
+        [...possibleFilters]
+    const settings = [...new Set([categoryToShow, ...currentVisible])]
+    const noFilter = possibleFilters.length === settings.length || !settings.length
+
+    noFilter ? url.searchParams.delete('visible') : url.searchParams.set('visible', settings.join(','))
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const getSort = (initialSort) => {
+    const url = new URL(window.location.href)
+    let sort = new URLSearchParams(url.search).get('sort')
+    if (!sort) {
+        sort = initialSort || 'result'
+    }
+    return sort
+}
+
+const setSort = (type) => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('sort', type)
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const getCollapsedCategory = (renderCollapsed) => {
+    let categories
+    if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        const collapsedItems = new URLSearchParams(url.search).get('collapsed')
+        switch (true) {
+        case !renderCollapsed && collapsedItems === null:
+            categories = ['passed']
+            break
+        case collapsedItems?.length === 0 || /^["']{2}$/.test(collapsedItems):
+            categories = []
+            break
+        case /^all$/.test(collapsedItems) || collapsedItems === null && /^all$/.test(renderCollapsed):
+            categories = [...possibleFilters]
+            break
+        default:
+            categories = collapsedItems?.split(',').map((item) => item.toLowerCase()) || renderCollapsed
+            break
+        }
+    } else {
+        categories = []
+    }
+    return categories
+}
+
+const getSortDirection = () => JSON.parse(sessionStorage.getItem('sortAsc')) || false
+const setSortDirection = (ascending) => sessionStorage.setItem('sortAsc', ascending)
+
+const getCollapsedIds = () => JSON.parse(sessionStorage.getItem('collapsedIds')) || []
+const setCollapsedIds = (list) => sessionStorage.setItem('collapsedIds', JSON.stringify(list))
+
+module.exports = {
+    getVisible,
+    hideCategory,
+    showCategory,
+    getCollapsedIds,
+    setCollapsedIds,
+    getSort,
+    setSort,
+    getSortDirection,
+    setSortDirection,
+    getCollapsedCategory,
+    possibleFilters,
+}
+
+},{}]},{},[4]);
+    </script>
+  </footer>
+</html>

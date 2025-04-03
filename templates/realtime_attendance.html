@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Real-Time Attendance{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1>Real-Time Attendance - {{ current_date }}</h1>
+        <div class="camera-container">
+            <div class="video-wrapper">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="overlay" style="position: absolute; top: 0; left: 0;"></canvas>
+            </div>
+        </div>
+        <div id="attendance-message" class="message"></div>
+        <h2>Today's Attendance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>S.No</th>
+                    <th>Name</th>
+                    <th>ID</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody id="attendance-table">
+                {% for record in attendance %}
+                    <tr>
+                        <td>{{ record.s_no }}</td>
+                        <td>{{ record.name }}</td>
+                        <td>{{ record.id }}</td>
+                        <td>{{ record.time }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script>
+        // Check if SocketIO is loaded
+        if (typeof io === 'undefined') {
+            console.error('SocketIO library failed to load. Please check the network or CDN URL.');
+            document.getElementById('attendance-message').textContent = 'Error: Unable to connect to server. Please refresh the page.';
+        } else {
+            var socket = io();
+            var video = document.getElementById('video');
+            var overlay = document.getElementById('overlay');
+            var ctx = overlay.getContext('2d');
+            var attendanceMessage = document.getElementById('attendance-message');
+            var attendanceTable = document.getElementById('attendance-table');
+            var stream = null;
+            var lastProcessed = 0;
+            var processingInterval = 2000; // Process every 2 seconds to avoid overloading
+
+            // Access the webcam
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(s) {
+                    stream = s;
+                    video.srcObject = stream;
+                    video.play();
+                    adjustCanvasSize();
+                })
+                .catch(function(err) {
+                    console.error("Error accessing webcam:", err);
+                    attendanceMessage.textContent = "Error accessing webcam. Please allow camera access.";
+                });
+
+            // Adjust canvas size to match video
+            function adjustCanvasSize() {
+                overlay.width = video.videoWidth;
+                overlay.height = video.videoHeight;
+            }
+
+            video.addEventListener('loadedmetadata', adjustCanvasSize);
+
+            // Continuously send video frames to the server for face detection and recognition
+            function processFrame() {
+                if (!stream) return; // Stop if the stream is closed
+
+                var currentTime = Date.now();
+                if (currentTime - lastProcessed < processingInterval) {
+                    requestAnimationFrame(processFrame);
+                    return;
+                }
+
+                lastProcessed = currentTime;
+
+                var canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                var imageData = canvas.toDataURL('image/jpeg');
+
+                fetch('/detect-and-mark-attendance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image_data: imageData })
+                })
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+                    if (data.faces && data.faces.length > 0) {
+                        data.faces.forEach(function(face) {
+                            var x = face.x;
+                            var y = face.y;
+                            var w = face.w;
+                            var h = face.h;
+                            // Draw a blue square around the face
+                            ctx.strokeStyle = '#0000FF';
+                            ctx.lineWidth = 3;
+                            ctx.strokeRect(x, y, w, h);
+                        });
+                    }
+
+                    if (data.message) {
+                        attendanceMessage.textContent = data.message;
+                    }
+
+                    // Continue processing frames
+                    requestAnimationFrame(processFrame);
+                })
+                .catch(function(err) {
+                    console.error("Error processing frame:", err);
+                    requestAnimationFrame(processFrame);
+                });
+            }
+
+            // Start processing frames when the video is playing
+            video.addEventListener('play', function() {
+                requestAnimationFrame(processFrame);
+            });
+
+            // Stop the camera when the page is unloaded
+            window.addEventListener('beforeunload', function() {
+                if (stream) {
+                    stream.getTracks().forEach(function(track) { track.stop(); });
+                    stream = null;
+                    video.srcObject = null;
+                    ctx.clearRect(0, 0, overlay.width, overlay.height);
+                }
+            });
+
+            // SocketIO event listeners for updating the attendance table
+            socket.on('attendance_update', function(data) {
+                attendanceTable.innerHTML = '';
+                data.attendance.forEach(function(record) {
+                    var row = document.createElement('tr');
+                    row.innerHTML = '<td>' + record.s_no + '</td>' +
+                                    '<td>' + record.name + '</td>' +
+                                    '<td>' + record.id + '</td>' +
+                                    '<td>' + record.time + '</td>';
+                    attendanceTable.appendChild(row);
+                });
+            });
+
+            socket.on('attendance_message', function(data) {
+                attendanceMessage.textContent = data.message;
+            });
+        }
+    </script>
+
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1, h2 {
+            color: #E0E0E0;
+            text-align: center;
+        }
+
+        .camera-container {
+            text-align: center;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .video-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 640px;
+            border-radius: 10px;
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .message {
+            text-align: center;
+            color: #FF5555;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #2A2A2A;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            color: #E0E0E0;
+        }
+
+        th {
+            background-color: #1E90FF;
+        }
+
+        tr:nth-child(even) {
+            background-color: #333;
+        }
+    </style>
+{% endblock %}

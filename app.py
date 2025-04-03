@@ -75,6 +75,8 @@ def user_exists(email):
     return False
 
 # Helper function to verify user credentials
+
+
 def verify_user(email, password):
     try:
         with open(USERS_CSV, 'r') as f:
@@ -586,9 +588,11 @@ def add_student():
     socketio.emit('student_message', {'message': 'Invalid data. Please provide all required fields.'})
     return jsonify({'status': 'error', 'message': 'Invalid data'})
 
+
+
 @app.route('/take-attendance', methods=['POST'])
 def take_attendance():
-    """Take attendance by recognizing a face."""
+    """s attendance by recognizing a face."""
     image_data = request.form.get('image_data')
     if image_data:
         name, student_id = recognize_face(image_data)
