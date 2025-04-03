@@ -509,6 +509,25 @@ def index():
     current_month = datetime.now().strftime('%B %Y')  # e.g., "October 2023"
     return render_template('index.html', attendance=today_attendance, total_students=total_students, current_month=current_month)
 
+@app.route('/detect-face', methods=['POST'])
+def detect_face():
+    """Detect faces in the given image and return their coordinates."""
+    data = request.get_json()
+    if not data or 'image_data' not in data:
+        return jsonify({'error': 'No image data provided'}), 400
+
+    image_data = data['image_data']
+    image_data = image_data.split(',')[1]  # Remove the "data:image/jpeg;base64," part
+    image = Image.open(BytesIO(base64.b64decode(image_data)))
+    img_array = np.array(image)
+    img_gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+
+    # Detect faces
+    faces = face_cascade.detectMultiScale(img_gray, scaleFactor=1.1, minNeighbors=5)
+    face_coords = [{'x': int(x), 'y': int(y), 'w': int(w), 'h': int(h)} for (x, y, w, h) in faces]
+
+    return jsonify({'faces': face_coords})
+
 @app.route('/attendance-trends')
 def attendance_trends():
     """Provide monthly attendance trends data for the chart."""
