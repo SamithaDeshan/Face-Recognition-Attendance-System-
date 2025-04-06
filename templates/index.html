@@ -4,6 +4,46 @@
 
 {% block extra_head %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Ensure the container allows for side-by-side layout */
+        .container.single-column {
+            max-width: 1200px; /* Adjust as needed */
+            width: 100%;
+        }
+
+        /* Flexbox container for side-by-side sections */
+        .side-by-side {
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 20px; /* Space between the two sections */
+            justify-content: space-between;
+        }
+
+        /* Style for each card in the side-by-side layout */
+        .side-by-side .card {
+            flex: 1;
+            min-width: 300px; /* Ensure cards don't get too narrow */
+            max-width: 48%; /* Ensure they take up roughly half the width */
+        }
+
+        /* Adjust chart container to fit within the card */
+        .chart-container {
+            position: relative;
+            height: 300px; /* Adjust height as needed */
+            width: 100%;
+        }
+
+        /* Responsive design: stack vertically on smaller screens */
+        @media (max-width: 768px) {
+            .side-by-side {
+                flex-direction: column;
+            }
+            .side-by-side .card {
+                max-width: 100%;
+            }
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -35,11 +75,22 @@
                 </div>
             </div>
 
-            <!-- Weekly Attendance Trends (Monday to Friday) -->
-            <div class="card">
-                <h2>Weekly Attendance Trends ({{ current_month }})</h2>
-                <div class="chart-container">
-                    <canvas id="weeklyAttendanceChart"></canvas>
+            <!-- Side-by-Side Container for Weekly and Department-Wise Sections -->
+            <div class="side-by-side">
+                <!-- Weekly Attendance Trends (Monday to Friday) -->
+                <div class="card">
+                    <h2>Weekly Attendance Trends ({{ current_month }})</h2>
+                    <div class="chart-container">
+                        <canvas id="weeklyAttendanceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Department-Wise Attendance Distribution -->
+                <div class="card">
+                    <h2>Department-Wise Attendance Distribution ({{ current_month.split(' ')[1] }})</h2>
+                    <div class="chart-container">
+                        <canvas id="departmentTrendsChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -76,7 +127,7 @@
             summaryCard.textContent = data.total_students;
         });
 
-        // Fetch monthly attendance trends data from the backend
+        // Fetch and render charts when the DOM is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // Monthly Attendance Chart
             fetch('/attendance-trends')
@@ -90,7 +141,7 @@
                             datasets: [{
                                 label: 'Attendance Rate (%)',
                                 data: data.attendance_rates, // e.g., [85, 90, ...]
-                                borderColor: '#1E90FF', // Changed to blue (Dodger Blue)
+                                borderColor: '#1E90FF', // Dodger Blue
                                 backgroundColor: 'rgba(30, 144, 255, 0.2)', // Light blue fill
                                 fill: true,
                                 tension: 0.4
@@ -146,8 +197,8 @@
                             datasets: [{
                                 label: 'Attendance Rate (%)',
                                 data: data.attendance_rates, // e.g., [80, 85, ...]
-                                backgroundColor: '#1E90FF', // Changed to blue (Dodger Blue)
-                                borderColor: '#1E90FF', // Changed to blue (Dodger Blue)
+                                backgroundColor: '#1E90FF', // Dodger Blue
+                                borderColor: '#1E90FF', // Dodger Blue
                                 borderWidth: 1
                             }]
                         },
@@ -187,6 +238,54 @@
                 .catch(err => {
                     console.error("Error fetching weekly attendance trends:", err);
                     showMessage("Failed to load weekly attendance trends.", true);
+                });
+
+            // Department-Wise Attendance Distribution (Pie Chart)
+            fetch('/department-trends')
+                .then(response => response.json())
+                .then(data => {
+                    const ctxDept = document.getElementById('departmentTrendsChart').getContext('2d');
+                    new Chart(ctxDept, {
+                        type: 'pie',
+                        data: {
+                            labels: data.labels, // e.g., ['BCE', 'BIT', 'CSE']
+                            datasets: [{
+                                label: 'Attendance Count',
+                                data: data.values, // e.g., [10, 8, 5]
+                                backgroundColor: data.colors, // e.g., ['#1E90FF', '#FF4500', '#32CD32']
+                                borderColor: '#FFFFFF',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        color: '#E0E0E0'
+                                    }
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            label += context.raw + ' attendance records';
+                                            return label;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.error("Error fetching department-wise trends:", err);
+                    showMessage("Failed to load department-wise trends.", true);
                 });
         });
     </script>

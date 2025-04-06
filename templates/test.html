@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Libraries</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        video, canvas {
+            border: 1px solid black;
+            margin: 10px;
+        }
+        #messages {
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Your Libraries</h1>
+    <p>This page tests Flask, Flask-SocketIO, MediaPipe, face_recognition, Pillow, and NumPy.</p>
+
+    <video id="video" width="640" height="480" autoplay></video>
+    <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
+    <br>
+    <button id="capture">Capture and Process Image</button>
+
+    <div id="messages">
+        <p>Messages will appear here...</p>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const captureButton = document.getElementById('capture');
+        const messagesDiv = document.getElementById('messages');
+
+        // Initialize SocketIO
+        const socket = io();
+
+        // Access the webcam
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                alert('Error accessing webcam: ' + err);
+            });
+
+        // Display messages from the server
+        socket.on('message', data => {
+            const p = document.createElement('p');
+            p.textContent = data.message;
+            messagesDiv.appendChild(p);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // Capture and process the image
+        captureButton.addEventListener('click', () => {
+            // Draw the video frame to the canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg');
+
+            // Send the image to the server for processing
+            fetch('/detect-and-recognize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ 'image_data': imageData })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Draw bounding boxes on the canvas
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    data.faces.forEach((face, index) => {
+                        ctx.strokeStyle = 'red';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(face.x, face.y, face.w, face.h);
+                        ctx.fillStyle = 'red';
+                        ctx.font = '16px Arial';
+                        ctx.fillText(data.names[index], face.x, face.y - 10);
+                    });
+                }
+            })
+            .catch(err => {
+                socket.emit('message', { message: 'Client error: ' + err });
+            });
+        });
+    </script>
+</body>
+</html>

@@ -349,6 +349,74 @@ def student_exists(student_id):
         print(f"Error reading {STUDENTS_CSV}: {e}")
     return False
 
+
+def get_department_trends():
+    """Calculate department-wise attendance distribution for the current year."""
+    current_year = datetime.now().year
+
+    # Step 1: Get the list of departments
+    departments = set()
+    try:
+        with open(STUDENTS_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                dept = row['department']
+                departments.add(dept)
+    except FileNotFoundError:
+        print(f"Error: {STUDENTS_CSV} not found.")
+        return {'labels': [], 'values': [], 'colors': []}
+    except Exception as e:
+        print(f"Error reading {STUDENTS_CSV}: {e}")
+        return {'labels': [], 'values': [], 'colors': []}
+
+    departments = list(departments)
+    if not departments:
+        return {'labels': [], 'values': [], 'colors': []}
+
+    # Step 2: Count attendance records for each department
+    dept_attendance_counts = {dept: 0 for dept in departments}
+    try:
+        with open(ATTENDANCE_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                try:
+                    record_date = datetime.strptime(row['time'], '%Y-%m-%d %H:%M:%S')
+                    if record_date.year == current_year:
+                        student_id = row['id']
+                        # Find the department of the student
+                        student_dept = None
+                        with open(STUDENTS_CSV, 'r') as f:
+                            student_reader = csv.DictReader(f)
+                            for student_row in student_reader:
+                                if student_row['id'] == student_id:
+                                    student_dept = student_row['department']
+                                    break
+                        if student_dept in dept_attendance_counts:
+                            dept_attendance_counts[student_dept] += 1
+                except ValueError:
+                    continue
+    except FileNotFoundError:
+        print(f"Error: {ATTENDANCE_CSV} not found.")
+        return {'labels': [], 'values': [], 'colors': []}
+    except Exception as e:
+        print(f"Error reading {ATTENDANCE_CSV}: {e}")
+        return {'labels': [], 'values': [], 'colors': []}
+
+    # Step 3: Prepare data for the pie chart
+    labels = departments
+    values = [dept_attendance_counts[dept] for dept in departments]
+    colors = [
+        '#1E90FF',  # Dodger Blue
+        '#FF4500',  # Orange Red
+        '#32CD32',  # Lime Green
+        '#FFD700',  # Gold
+        '#FF69B4',  # Hot Pink
+    ]
+    # Ensure we have enough colors for all departments
+    colors = [colors[i % len(colors)] for i in range(len(departments))]
+
+    return {'labels': labels, 'values': values, 'colors': colors}
+
 def get_all_students():
     """Get all registered students."""
     students = []
@@ -553,6 +621,12 @@ def take_attendance_page():
 def add_student_page():
     """Render the Add New User page."""
     return render_template('add_student.html')
+
+@app.route('/department-trends')
+def department_trends():
+    """Provide department-wise attendance distribution data for the chart."""
+    trends = get_department_trends()
+    return jsonify(trends)
 
 @app.route('/add-student', methods=['POST'])
 def add_student():
