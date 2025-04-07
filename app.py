@@ -12,6 +12,14 @@ from io import BytesIO
 from PIL import Image
 from calendar import monthrange
 from datetime import datetime, timedelta
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from flask import make_response
+import json
+
 
 # Initialize Flask app and SocketIO
 app = Flask(__name__)
@@ -627,6 +635,76 @@ def department_trends():
     """Provide department-wise attendance distribution data for the chart."""
     trends = get_department_trends()
     return jsonify(trends)
+
+
+@app.route('/download-pdf', methods=['POST'])
+def download_pdf():
+    """Generate and download a PDF report of the student's attendance."""
+    # Get form data
+    student_id = request.form.get('student_id')
+    student_name = request.form.get('student_name')
+    start_date = request.form.get('start_date')
+    end_date = request.form.get('end_date')
+    records_json = request.form.get('records')
+
+    # Debug: Print the raw records_json string
+    print("Raw records_json:", records_json)
+
+    # Parse the records JSON
+    try:
+        records = json.loads(records_json)
+    except json.JSONDecodeError as e:
+        print("JSON Decode Error:", e)
+        return "Error: Invalid attendance records data", 400
+
+    # Rest of the PDF generation code...
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+
+    styles = getSampleStyleSheet()
+    title_style = styles['Heading1']
+    subtitle_style = ParagraphStyle(
+        name='Subtitle',
+        parent=styles['Normal'],
+        fontSize=12,
+        spaceAfter=12,
+        textColor=colors.black
+    )
+    table_style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ])
+
+    elements.append(Paragraph("Attendance Report", title_style))
+    elements.append(Paragraph(f"Student: {student_name} ({student_id})", subtitle_style))
+    elements.append(Paragraph(f"Period: {start_date} to {end_date}", subtitle_style))
+
+    if records:
+        table_data = [["S No", "Date", "Time"]]
+        for idx, record in enumerate(records, 1):
+            table_data.append([str(idx), record['date'], record['time']])
+        table = Table(table_data, colWidths=[0.5 * inch, 2 * inch, 2 * inch])
+        table.setStyle(table_style)
+        elements.append(table)
+    else:
+        elements.append(Paragraph("No attendance records for this period.", subtitle_style))
+
+    doc.build(elements)
+    buffer.seek(0)
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename=attendance_report_{student_id}.pdf'
+    response.headers['Content-Type'] = 'application/pdf'
+    return response
 
 @app.route('/add-student', methods=['POST'])
 def add_student():

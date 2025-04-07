@@ -63,6 +63,19 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <!-- Download PDF Button (Only if there are records) -->
+                    {% if student_attendance_records %}
+                        <form action="{{ url_for('download_pdf') }}" method="post">
+                            <!-- Hidden inputs to pass data to the backend -->
+                            <input type="hidden" name="student_id" value="{{ selected_student.id }}">
+                            <input type="hidden" name="student_name" value="{{ selected_student.name }}">
+                            <input type="hidden" name="start_date" value="{{ request.form.get('start_date') }}">
+                            <input type="hidden" name="end_date" value="{{ request.form.get('end_date') }}">
+                            <input type="hidden" name="records" value="{{ student_attendance_records | tojson }}">
+                            <button type="submit" class="button" style="margin-top: 10px;">Download PDF Report</button>
+                        </form>
+                    {% endif %}
                 {% endif %}
             </div>
 
