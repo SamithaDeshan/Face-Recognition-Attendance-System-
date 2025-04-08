@@ -24,8 +24,13 @@
                 </a>
             </li>
             <li>
+            <a href="{{ url_for('realtime_attendance') }}" class="{% if request.endpoint == 'realtime_attendance' %}active{% endif %}">
+                        <i data-feather="video"></i> Set Automatically Attendance
+            </a>
+            </li>
+            <li>
                 <a href="{{ url_for('take_attendance_page') }}" class="{% if request.endpoint == 'take_attendance_page' %}active{% endif %}">
-                    <i data-feather="camera"></i> Take Attendance
+                    <i data-feather="camera"></i> Take Attendance Manually
                 </a>
             </li>
             <li>

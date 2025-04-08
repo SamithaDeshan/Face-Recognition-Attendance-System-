@@ -1,233 +1,228 @@
 {% extends "base.html" %}
 
-{% block title %}Real-Time Attendance{% endblock %}
+{% block title %}Realtime Attendance{% endblock %}
+
+{% block extra_head %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.js"></script>
+    <style>
+        .realtime-container {
+            display: flex;
+            height: calc(100vh - 40px); /* Adjust for padding */
+        }
+        .video-section {
+            width: 40%;
+            padding: 20px;
+            background-color: #1A1A1A;
+            border-radius: 8px;
+            margin-right: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .attendance-section {
+            flex: 1;
+            padding: 20px;
+            background-color: #1A1A1A;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            overflow-y: auto;
+        }
+        .video-section video {
+            width: 100%;
+            border-radius: 4px;
+        }
+        .attendance-section h2 {
+            color: #E0E0E0;
+            margin-top: 0;
+        }
+        .table-wrapper {
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+    </style>
+{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <h1>Real-Time Attendance - {{ current_date }}</h1>
-        <div class="camera-container">
-            <div class="video-wrapper">
-                <video id="video" autoplay playsinline></video>
-                <canvas id="overlay" style="position: absolute; top: 0; left: 0;"></canvas>
+    <div class="message" id="messageBox"></div>
+    <div class="fixed-container">
+        <div class="realtime-container">
+            <!-- Video Feed Section -->
+            <div class="video-section">
+                <h2>Live Camera Feed</h2>
+                <video id="realtimeVideo" autoplay playsinline></video>
+                <canvas id="realtimeCanvas" style="display: none;"></canvas>
+            </div>
+
+            <!-- Today's Attendance Section -->
+            <div class="attendance-section">
+                <h2>Today's Attendance ({{ current_date }})</h2>
+                <div class="table-wrapper">
+                    <table id="attendanceTable">
+                        <thead>
+                            <tr>
+                                <th>S No</th>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceBody">
+                            {% for record in attendance %}
+                            <tr>
+                                <td>{{ record.s_no }}</td>
+                                <td>{{ record.name }}</td>
+                                <td>{{ record.id }}</td>
+                                <td>{{ record.time }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4">No attendance records for {{ current_date }}.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-        <div id="attendance-message" class="message"></div>
-        <h2>Today's Attendance</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>S.No</th>
-                    <th>Name</th>
-                    <th>ID</th>
-                    <th>Time</th>
-                </tr>
-            </thead>
-            <tbody id="attendance-table">
-                {% for record in attendance %}
-                    <tr>
-                        <td>{{ record.s_no }}</td>
-                        <td>{{ record.name }}</td>
-                        <td>{{ record.id }}</td>
-                        <td>{{ record.time }}</td>
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
     </div>
 {% endblock %}
 
 {% block scripts %}
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <script>
-        // Check if SocketIO is loaded
-        if (typeof io === 'undefined') {
-            console.error('SocketIO library failed to load. Please check the network or CDN URL.');
-            document.getElementById('attendance-message').textContent = 'Error: Unable to connect to server. Please refresh the page.';
-        } else {
-            var socket = io();
-            var video = document.getElementById('video');
-            var overlay = document.getElementById('overlay');
-            var ctx = overlay.getContext('2d');
-            var attendanceMessage = document.getElementById('attendance-message');
-            var attendanceTable = document.getElementById('attendance-table');
-            var stream = null;
-            var lastProcessed = 0;
-            var processingInterval = 2000; // Process every 2 seconds to avoid overloading
+        const socket = io();
+        const currentDate = "{{ current_date }}";
+        let videoStream = null;
+        let lastProcessedTime = 0;
+        const PROCESS_INTERVAL = 2000; // Process every 2 seconds
+        let processing = false;
 
-            // Access the webcam
+        // Start the video feed and processing
+        function startVideo() {
+            const video = document.getElementById('realtimeVideo');
             navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function(s) {
-                    stream = s;
+                .then(stream => {
+                    videoStream = stream;
                     video.srcObject = stream;
-                    video.play();
-                    adjustCanvasSize();
+                    processing = true;
+                    processVideo();
                 })
-                .catch(function(err) {
+                .catch(err => {
                     console.error("Error accessing webcam:", err);
-                    attendanceMessage.textContent = "Error accessing webcam. Please allow camera access.";
+                    showMessage("Failed to access webcam.", true);
                 });
+        }
 
-            // Adjust canvas size to match video
-            function adjustCanvasSize() {
-                overlay.width = video.videoWidth;
-                overlay.height = video.videoHeight;
+        // Stop the video feed and processing
+        function stopVideo() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+                const video = document.getElementById('realtimeVideo');
+                video.srcObject = null;
+                processing = false;
             }
+        }
 
-            video.addEventListener('loadedmetadata', adjustCanvasSize);
+        // Process video frames for face detection and attendance
+        function processVideo() {
+            if (!processing) return;
 
-            // Continuously send video frames to the server for face detection and recognition
-            function processFrame() {
-                if (!stream) return; // Stop if the stream is closed
+            const video = document.getElementById('realtimeVideo');
+            const canvas = document.getElementById('realtimeCanvas');
+            const context = canvas.getContext('2d');
+            const currentTime = Date.now();
 
-                var currentTime = Date.now();
-                if (currentTime - lastProcessed < processingInterval) {
-                    requestAnimationFrame(processFrame);
-                    return;
-                }
-
-                lastProcessed = currentTime;
-
-                var canvas = document.createElement('canvas');
+            if (currentTime - lastProcessedTime >= PROCESS_INTERVAL) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                var ctx = canvas.getContext('2d');
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                var imageData = canvas.toDataURL('image/jpeg');
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const imageData = canvas.toDataURL('image/jpeg');
 
-                fetch('/detect-and-mark-attendance', {
+                // Detect faces first
+                fetch('/detect-face', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ image_data: imageData })
                 })
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    ctx.clearRect(0, 0, overlay.width, overlay.height);
-
+                .then(response => response.json())
+                .then(data => {
                     if (data.faces && data.faces.length > 0) {
-                        data.faces.forEach(function(face) {
-                            var x = face.x;
-                            var y = face.y;
-                            var w = face.w;
-                            var h = face.h;
-                            // Draw a blue square around the face
-                            ctx.strokeStyle = '#0000FF';
-                            ctx.lineWidth = 3;
-                            ctx.strokeRect(x, y, w, h);
-                        });
+                        // Face detected, mark attendance
+                        fetch('/take-attendance', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({ 'image_data': imageData })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            lastProcessedTime = currentTime;
+                        })
+                        .catch(err => console.error("Error marking attendance:", err));
                     }
-
-                    if (data.message) {
-                        attendanceMessage.textContent = data.message;
-                    }
-
-                    // Continue processing frames
-                    requestAnimationFrame(processFrame);
                 })
-                .catch(function(err) {
-                    console.error("Error processing frame:", err);
-                    requestAnimationFrame(processFrame);
-                });
+                .catch(err => console.error("Error detecting face:", err));
             }
 
-            // Start processing frames when the video is playing
-            video.addEventListener('play', function() {
-                requestAnimationFrame(processFrame);
-            });
+            // Continue processing if still on this page
+            if (processing) {
+                requestAnimationFrame(processVideo);
+            }
+        }
 
-            // Stop the camera when the page is unloaded
-            window.addEventListener('beforeunload', function() {
-                if (stream) {
-                    stream.getTracks().forEach(function(track) { track.stop(); });
-                    stream = null;
-                    video.srcObject = null;
-                    ctx.clearRect(0, 0, overlay.width, overlay.height);
-                }
-            });
+        // Show message
+        function showMessage(message, isError = false) {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.style.display = 'block';
+            messageBox.classList.add('show');
+            if (isError) {
+                messageBox.classList.add('error');
+            } else {
+                messageBox.classList.remove('error');
+            }
+            setTimeout(() => {
+                messageBox.classList.remove('show');
+                setTimeout(() => messageBox.style.display = 'none', 300);
+            }, 3000);
+        }
 
-            // SocketIO event listeners for updating the attendance table
-            socket.on('attendance_update', function(data) {
-                attendanceTable.innerHTML = '';
-                data.attendance.forEach(function(record) {
-                    var row = document.createElement('tr');
-                    row.innerHTML = '<td>' + record.s_no + '</td>' +
-                                    '<td>' + record.name + '</td>' +
-                                    '<td>' + record.id + '</td>' +
-                                    '<td>' + record.time + '</td>';
-                    attendanceTable.appendChild(row);
+        // Socket listeners
+        socket.on('attendance_update', function(data) {
+            const tbody = document.getElementById('attendanceBody');
+            tbody.innerHTML = '';
+            if (data.attendance.length > 0) {
+                data.attendance.forEach(record => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${record.s_no}</td>
+                        <td>${record.name}</td>
+                        <td>${record.id}</td>
+                        <td>${record.time}</td>
+                    `;
+                    tbody.appendChild(row);
                 });
-            });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="4">No attendance records for ${currentDate}.</td>`;
+                tbody.appendChild(row);
+            }
+        });
 
-            socket.on('attendance_message', function(data) {
-                attendanceMessage.textContent = data.message;
-            });
-        }
+        socket.on('attendance_message', function(data) {
+            showMessage(data.message, data.message.includes('already marked') || data.message.includes('not recognized'));
+        });
+
+        // Start video when page loads
+        document.addEventListener('DOMContentLoaded', startVideo);
+
+        // Stop video when navigating away
+        window.addEventListener('beforeunload', stopVideo);
+
+        // Ensure video stops if the page is hidden (e.g., tab switch)
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopVideo();
+            } else {
+                startVideo();
+            }
+        });
     </script>
-
-    <style>
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        h1, h2 {
-            color: #E0E0E0;
-            text-align: center;
-        }
-
-        .camera-container {
-            text-align: center;
-            margin-bottom: 20px;
-            position: relative;
-        }
-
-        .video-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-
-        #video {
-            width: 100%;
-            max-width: 640px;
-            border-radius: 10px;
-        }
-
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-        }
-
-        .message {
-            text-align: center;
-            color: #FF5555;
-            margin: 10px 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            background-color: #2A2A2A;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        th, td {
-            padding: 12px;
-            text-align: left;
-            color: #E0E0E0;
-        }
-
-        th {
-            background-color: #1E90FF;
-        }
-
-        tr:nth-child(even) {
-            background-color: #333;
-        }
-    </style>
 {% endblock %}

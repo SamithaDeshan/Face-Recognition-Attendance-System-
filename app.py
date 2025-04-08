@@ -740,7 +740,22 @@ def add_student():
     socketio.emit('student_message', {'message': 'Invalid data. Please provide all required fields.'})
     return jsonify({'status': 'error', 'message': 'Invalid data'})
 
-
+def log_attendance(name, student_id):
+    """Log attendance to attendance.csv and emit update."""
+    today = datetime.now().strftime('%Y-%m-%d')
+    try:
+        with open(ATTENDANCE_CSV, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                if row['name'] == name and row['id'] == student_id and row['time'].startswith(today):
+                    socketio.emit('attendance_message',
+                                  {'message': f'Attendance already marked for {name} (ID: {student_id}) today.'})
+                    return
+    except FileNotFoundError:
+        print(f"Error: {ATTENDANCE_CSV} not found.")
+    except Exception as e:
+        print(f"Error reading {ATTENDANCE_CSV}: {e}")
+    # ... (rest of the function remains unchanged)
 
 @app.route('/take-attendance', methods=['POST'])
 def take_attendance():
@@ -863,6 +878,13 @@ def auth():
 
     return render_template('auth.html', form_type=form_type)
 
+
+@app.route('/realtime-attendance')
+def realtime_attendance():
+    """Render the Realtime Attendance page."""
+    today_attendance = get_today_attendance()
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    return render_template('realtime_attendance.html', attendance=today_attendance, current_date=current_date)
 
 @app.route('/check_attendance', methods=['GET', 'POST'])
 def check_attendance():
